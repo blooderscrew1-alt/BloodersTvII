@@ -1,0 +1,6 @@
+{
+  "name": "BloodersTv II",
+  "description": "Reproductor IPTV avanzado para Android TV Box y dispositivos táctiles con soporte M3U, Xtream Codes, caché inteligente y control parental.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
