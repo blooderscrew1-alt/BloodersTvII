@@ -1,6 +1,6 @@
 package com.example.data.nsrplay
 
-import com.example.BuildConfig
+import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -19,7 +19,9 @@ class NsrPlayException(message: String) : Exception(message)
  * We deliberately do not cache responses on disk: their terms forbid building a
  * local mirror of the index. The UI keeps only the current page in memory.
  */
-class NsrPlayRepository {
+class NsrPlayRepository(context: Context) {
+
+    private val config = NsrPlayConfigStore(context.applicationContext)
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
@@ -29,7 +31,7 @@ class NsrPlayRepository {
         .build()
 
     val isConfigured: Boolean
-        get() = BuildConfig.NSRPLAY_API_KEY.isNotBlank()
+        get() = config.apiKey().isNotBlank()
 
     suspend fun getCatalog(
         type: NsrMediaType,
@@ -84,14 +86,45 @@ class NsrPlayRepository {
         parseServers(data.optJSONArray("servers"))
     }
 
-    private fun get(path: String, query: Map<String, String>): JSONObject {
-        if (!isConfigured) {
+    /**
+     * Verifies a key/base URL without saving them. Returns the number of titles
+     * in the first catalog page so the UI can show that the call really worked.
+     */
+    suspend fun testConnection(apiKey: String, baseUrl: String): Int = withContext(Dispatchers.IO) {
+        val json = get(
+            path = "/api/v1/content/catalog",
+            query = mapOf("type" to "movie", "page" to "1"),
+            apiKeyOverride = apiKey,
+            baseUrlOverride = baseUrl
+        )
+        val data = json.optJSONObject("data") ?: json
+        parseItemArray(data.optJSONArray("items")).size
+    }
+
+    private fun get(
+        path: String,
+        query: Map<String, String>,
+        apiKeyOverride: String? = null,
+        baseUrlOverride: String? = null
+    ): JSONObject {
+        val apiKey = if (apiKeyOverride != null) {
+            config.effectiveApiKey(apiKeyOverride)
+        } else {
+            config.apiKey()
+        }
+        val baseUrl = if (baseUrlOverride != null) {
+            config.effectiveBaseUrl(baseUrlOverride)
+        } else {
+            config.baseUrl()
+        }
+
+        if (apiKey.isBlank()) {
             throw NsrPlayException(
-                "Falta la API Key de NSRPlay. Agrega NSRPLAY_API_KEY en el archivo .env del proyecto."
+                "Falta la API Key de NSRPlay. Configúrala en Ajustes > NSRPlay."
             )
         }
 
-        val urlBuilder = (BuildConfig.NSRPLAY_BASE_URL + path).toHttpUrlOrNull()
+        val urlBuilder = (baseUrl + path).toHttpUrlOrNull()
             ?.newBuilder()
             ?: throw NsrPlayException("URL de NSRPlay no válida.")
 
@@ -100,7 +133,7 @@ class NsrPlayRepository {
 
         val request = Request.Builder()
             .url(url)
-            .header("X-API-Key", BuildConfig.NSRPLAY_API_KEY)
+            .header("X-API-Key", apiKey)
             .header("Accept", "application/json")
             .header(
                 "User-Agent",

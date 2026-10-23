@@ -7,6 +7,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,9 +40,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,14 +77,20 @@ fun SettingsScreen(
     var newPinText by remember { mutableStateOf("") }
     var pinFeedback by remember { mutableStateOf<String?>(null) }
 
-    LazyColumn(
+    var selectedSection by rememberSaveable { mutableIntStateOf(0) }
+
+    Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF090E13))
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+            .background(Color(0xFF090E13)),
+        contentAlignment = Alignment.TopCenter
     ) {
-        item {
+        Column(
+            modifier = Modifier
+                .widthIn(max = 980.dp)
+                .fillMaxSize()
+                .padding(horizontal = 18.dp, vertical = 12.dp)
+        ) {
             Text(
                 text = "Ajustes y Personalización",
                 color = Color.White,
@@ -88,11 +98,27 @@ fun SettingsScreen(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Optimización de streaming, control parental y apariencia.",
+                text = "Streaming, control parental, apariencia y proveedor NSRPlay.",
                 color = Color(0xFF8F9DAA),
                 fontSize = 12.sp
             )
-        }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            SettingsSectionTabs(
+                selected = selectedSection,
+                onSelect = { selectedSection = it },
+                primaryColor = primaryColor
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (selectedSection == 0) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp)
+                ) {
 
         // Section 1: Themes / Dark Mode Accent
         item {
@@ -365,7 +391,53 @@ fun SettingsScreen(
         }
 
         item {
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+                }
+            } else {
+                NsrPlaySettingsContent(
+                    primaryColor = primaryColor,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsSectionTabs(
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    primaryColor: Color
+) {
+    Row(
+        modifier = Modifier
+            .widthIn(max = 560.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(9.dp))
+            .background(Color(0xFF101A24))
+            .padding(3.dp)
+    ) {
+        listOf("General", "NSRPlay").forEachIndexed { index, label ->
+            val isSelected = selected == index
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(if (isSelected) primaryColor else Color.Transparent)
+                    .clickable { onSelect(index) }
+                    .padding(vertical = 8.dp)
+                    .testTag(if (index == 0) "settings_tab_general" else "settings_tab_nsrplay"),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = label,
+                    color = if (isSelected) Color.Black else Color(0xFF9FB0C0),
+                    fontSize = 12.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    maxLines = 1
+                )
+            }
         }
     }
 }

@@ -17,6 +17,22 @@ Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propia
 
 ## Configurar NSRPlay
 
+### Desde la app (recomendado)
+
+Abre **Ajustes → NSRPlay** y pega la API Key ahí. También puedes cambiar la URL del servicio si usas un proxy. La configuración se guarda en el dispositivo y se aplica al volver a la pestaña NSRPlay; **no hay que editar código ni recompilar**.
+
+La pestaña incluye:
+
+- campo de API Key con mostrar/ocultar;
+- URL del servicio (por defecto `https://nsrplay.space`);
+- **Guardar configuración**;
+- **Probar conexión**, que hace una petición real y muestra cuántos títulos respondió y cuánto tardó;
+- **Restablecer**, para volver a los valores incluidos en el APK.
+
+Los valores de `.env` son solo los valores por defecto. Si el campo de clave se deja vacío, se usa la clave compilada en la app.
+
+### Desde `.env` (para compilar)
+
 La API Key se lee del archivo `.env` (ignorado por git) y se inyecta en `BuildConfig` al compilar. **No se escribe en el código fuente**.
 
 1. Copia `.env.example` a `.env`.
@@ -74,6 +90,7 @@ El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en A
 ### NSRPlay + Serchwebview
 
 - Pestaña **NSRPlay** dentro de la navegación principal.
+- Pestañas **General / NSRPlay** en Ajustes: clave, URL, guardar, probar conexión y restablecer sin tocar el código.
 - Cliente HTTP propio y liviano (`NsrPlayRepository`) con mensajes de error claros para 401/404/429/5xx.
 - Grilla adaptativa de pósters, sin animaciones de escala, con carga de más páginas bajo demanda.
 - Detalle de película/serie y selector de servidores por episodio.
@@ -93,9 +110,10 @@ app/src/main/java/com/example/
 ## Verificación realizada
 
 - `:app:assembleDebug` compila y genera APK.
-- 11 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`).
+- 13 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`, `NsrPlayConfigStoreTest`).
 - UI probada en 1920×1080 (tablet/TV), 1080×1920 a 420 dpi (teléfono vertical) y 1920×1080 a 420 dpi (teléfono horizontal): cabecera, botón de listas, diálogo de alta y reproductor web.
 - El catálogo/detalle de NSRPlay se validó contra un mock local porque la red del emulador de pruebas bloquea `nsrplay.space`; la app real usa la URL de producción.
+- La configuración NSRPlay se probó de extremo a extremo: URL de mock, "Probar conexión" (respuesta real), guardado y apertura de la pestaña NSRPlay con esa configuración.
 
 ## Aviso
 

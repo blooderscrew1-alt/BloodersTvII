@@ -110,7 +110,8 @@ fun NsrPlayScreen(
     primaryColor: Color = Color(0xFFCCFF00),
     modifier: Modifier = Modifier
 ) {
-    val repository = remember { NsrPlayRepository() }
+    val context = LocalContext.current
+    val repository = remember { NsrPlayRepository(context.applicationContext) }
     val scope = rememberCoroutineScope()
     val compactHeader = LocalConfiguration.current.screenHeightDp < 600
 
@@ -130,7 +131,7 @@ fun NsrPlayScreen(
 
     LaunchedEffect(mediaType, selectedGenre, submittedQuery, reloadTick) {
         if (!repository.isConfigured) {
-            error = "Falta la API Key de NSRPlay. Agrega NSRPLAY_API_KEY en el archivo .env y vuelve a compilar."
+            error = "Falta la API Key de NSRPlay. Configúrala desde Ajustes > NSRPlay sin tocar el código."
             return@LaunchedEffect
         }
 
@@ -429,7 +430,7 @@ fun NsrPlayScreen(
             when {
                 !repository.isConfigured -> InfoState(
                     title = "NSRPlay no está configurado",
-                    message = "Agrega tu API Key en el archivo .env del proyecto (NSRPLAY_API_KEY) y vuelve a compilar. Por seguridad, la clave nunca se escribe en el código fuente.",
+                    message = "Abre Ajustes > NSRPlay y pega tu API Key. Se guarda en este dispositivo; no necesitas editar código ni recompilar.",
                     primaryColor = primaryColor
                 )
 
