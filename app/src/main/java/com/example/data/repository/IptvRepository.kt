@@ -16,6 +16,9 @@ import com.example.data.nsrplay.NsrHistoryItem
 import com.example.data.nsrplay.NsrMedia
 import com.example.data.nsrplay.NsrMediaType
 import com.example.data.nsrplay.watchKey
+import com.example.data.vimeus.VimeusHistoryItem
+import com.example.data.vimeus.VimeusMedia
+import com.example.data.vimeus.VimeusType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -48,6 +51,12 @@ class IptvRepository(private val context: Context) {
     private val _nsrHistory = MutableStateFlow<List<NsrHistoryItem>>(emptyList())
     val nsrHistory: StateFlow<List<NsrHistoryItem>> = _nsrHistory.asStateFlow()
 
+    private val _vimeusWatched = MutableStateFlow<Set<String>>(emptySet())
+    val vimeusWatched: StateFlow<Set<String>> = _vimeusWatched.asStateFlow()
+
+    private val _vimeusHistory = MutableStateFlow<List<VimeusHistoryItem>>(emptyList())
+    val vimeusHistory: StateFlow<List<VimeusHistoryItem>> = _vimeusHistory.asStateFlow()
+
     private val _favorites = MutableStateFlow<Set<String>>(emptySet())
     val favorites: StateFlow<Set<String>> = _favorites.asStateFlow()
 
@@ -69,7 +78,63 @@ class IptvRepository(private val context: Context) {
         loadFavorites()
         loadWatchedNsr()
         loadNsrHistory()
+        loadVimeus()
         loadItems()
+    }
+
+    private fun loadVimeus() {
+        _vimeusWatched.value = prefs.getStringSet("watched_vimeus_keys", emptySet()) ?: emptySet()
+        val raw = prefs.getString("vimeus_history_json", null) ?: return
+        try {
+            val array = JSONArray(raw)
+            val list = mutableListOf<VimeusHistoryItem>()
+            for (i in 0 until array.length()) {
+                val obj = array.optJSONObject(i) ?: continue
+                val id = obj.optString("id")
+                if (id.isBlank()) continue
+                val type = try {
+                    VimeusType.valueOf(obj.optString("type", VimeusType.MOVIE.apiValue).uppercase())
+                } catch (_: Exception) {
+                    VimeusType.MOVIE
+                }
+                list.add(
+                    VimeusHistoryItem(
+                        id = id,
+                        type = type,
+                        title = obj.optString("title").ifBlank { id },
+                        posterUrl = obj.optString("posterUrl").takeIf { it.isNotBlank() },
+                        year = obj.optString("year").takeIf { it.isNotBlank() },
+                        apiEmbedUrl = obj.optString("apiEmbedUrl").takeIf { it.isNotBlank() },
+                        lastWatchedTimestamp = obj.optLong("lastWatchedTimestamp", 0L)
+                    )
+                )
+            }
+            _vimeusHistory.value = list.sortedByDescending { it.lastWatchedTimestamp }.take(30)
+        } catch (_: Throwable) {
+        }
+    }
+
+    private fun saveVimeusHistory(list: List<VimeusHistoryItem>) {
+        repoScope.launch {
+            try {
+                val array = JSONArray()
+                list.forEach { entry ->
+                    array.put(
+                        JSONObject().apply {
+                            put("id", entry.id)
+                            put("type", entry.type.apiValue)
+                            put("title", entry.title)
+                            put("posterUrl", entry.posterUrl ?: "")
+                            put("year", entry.year ?: "")
+                            put("apiEmbedUrl", entry.apiEmbedUrl ?: "")
+                            put("lastWatchedTimestamp", entry.lastWatchedTimestamp)
+                        }
+                    )
+                }
+                prefs.edit().putString("vimeus_history_json", array.toString()).apply()
+            } catch (_: Throwable) {
+            }
+        }
     }
 
     private fun loadNsrHistory() {
@@ -450,6 +515,17 @@ class IptvRepository(private val context: Context) {
         }
     }
 
+    fun setFavorites(ids: Set<String>) {
+        _favorites.value = ids
+        prefs.edit().putStringSet("favorite_ids", ids).apply()
+        _items.value = _items.value.map { it.copy(isFavorite = ids.contains(it.id)) }
+    }
+
+    fun setLockedCategories(categories: Set<String>) {
+        _lockedCategories.value = categories
+        prefs.edit().putStringSet("locked_categories", categories).apply()
+    }
+
     fun recordWatchHistory(item: PlaylistItem, positionMs: Long, durationMs: Long) {
         val currentList = _history.value.toMutableList()
         currentList.removeAll { it.itemId == item.id }
@@ -518,14 +594,44 @@ class IptvRepository(private val context: Context) {
 
     fun isNsrWatched(media: NsrMedia): Boolean = _watchedNsr.value.contains(media.watchKey())
 
+    fun markVimeusWatched(media: VimeusMedia) {
+        val key = media.watchKey()
+        if (!_vimeusWatched.value.contains(key)) {
+            val updated = _vimeusWatched.value + key
+            _vimeusWatched.value = updated
+            prefs.edit().putStringSet("watched_vimeus_keys", updated).apply()
+        }
+        val entry = VimeusHistoryItem(
+            id = media.id,
+            type = media.type,
+            title = media.title,
+            posterUrl = media.posterUrl,
+            year = media.year,
+            apiEmbedUrl = media.apiEmbedUrl,
+            lastWatchedTimestamp = System.currentTimeMillis()
+        )
+        val updatedHistory = (_vimeusHistory.value.filterNot { it.watchKey == key } + entry)
+            .sortedByDescending { it.lastWatchedTimestamp }
+            .take(30)
+        _vimeusHistory.value = updatedHistory
+        saveVimeusHistory(updatedHistory)
+    }
+
+    fun isVimeusWatched(media: VimeusMedia): Boolean =
+        _vimeusWatched.value.contains(media.watchKey())
+
     fun clearHistory() {
         _history.value = emptyList()
         _watchedNsr.value = emptySet()
         _nsrHistory.value = emptyList()
+        _vimeusWatched.value = emptySet()
+        _vimeusHistory.value = emptyList()
         prefs.edit()
             .remove("watch_history_json")
             .remove("watched_nsr_keys")
             .remove("nsr_history_json")
+            .remove("watched_vimeus_keys")
+            .remove("vimeus_history_json")
             .apply()
     }
 

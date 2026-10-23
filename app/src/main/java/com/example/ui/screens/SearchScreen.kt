@@ -70,7 +70,11 @@ import com.example.data.nsrplay.NsrPlayException
 import com.example.data.nsrplay.NsrPlayRepository
 import com.example.data.nsrplay.watchKey
 import com.example.data.repository.IptvRepository
+import com.example.data.vimeus.VimeusMedia
+import com.example.data.vimeus.VimeusRepository
+import com.example.data.vimeus.VimeusType
 import com.example.ui.components.NsrBadgeColor
+import com.example.ui.components.VimeusBadgeColor
 import kotlinx.coroutines.launch
 
 @Composable
@@ -83,9 +87,11 @@ fun SearchScreen(
     val allItems by repository.items.collectAsState()
     val history by repository.history.collectAsState()
     val watchedNsr by repository.watchedNsr.collectAsState()
+    val watchedVimeus by repository.vimeusWatched.collectAsState()
     val watchedIds = remember(history) { history.map { it.itemId }.toSet() }
     val context = LocalContext.current
     val nsrRepository = remember { NsrPlayRepository(context.applicationContext) }
+    val vimeusRepository = remember { VimeusRepository(context.applicationContext) }
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
 
@@ -97,6 +103,12 @@ fun SearchScreen(
     var nsrLoading by remember { mutableStateOf(false) }
     var nsrError by remember { mutableStateOf<String?>(null) }
     var selectedNsr by remember { mutableStateOf<NsrMedia?>(null) }
+
+    var vimeusSubmittedQuery by remember { mutableStateOf("") }
+    var vimeusResults by remember { mutableStateOf<List<VimeusMedia>>(emptyList()) }
+    var vimeusLoading by remember { mutableStateOf(false) }
+    var vimeusError by remember { mutableStateOf<String?>(null) }
+    var selectedVimeus by remember { mutableStateOf<VimeusMedia?>(null) }
 
     fun submitNsrSearch() {
         val cleanQuery = query.trim()
@@ -139,6 +151,42 @@ fun SearchScreen(
         }
     }
 
+    fun submitVimeusSearch() {
+        val cleanQuery = query.trim()
+        if (cleanQuery.length < 2 || selectedFilter == "Canales") return
+        if (cleanQuery == vimeusSubmittedQuery && vimeusLoading) return
+
+        vimeusSubmittedQuery = cleanQuery
+        vimeusLoading = true
+        vimeusError = null
+        vimeusResults = emptyList()
+
+        scope.launch {
+            try {
+                val result = vimeusRepository.search(
+                    query = cleanQuery,
+                    preferredType = when (selectedFilter) {
+                        "Películas" -> VimeusType.MOVIE
+                        "Series" -> VimeusType.SERIES
+                        else -> null
+                    }
+                )
+                if (vimeusSubmittedQuery == cleanQuery) {
+                    vimeusResults = result
+                    vimeusError = null
+                }
+            } catch (e: Exception) {
+                if (vimeusSubmittedQuery == cleanQuery) {
+                    vimeusError = e.message ?: "Vimeus rechazó la búsqueda."
+                }
+            } finally {
+                if (vimeusSubmittedQuery == cleanQuery) {
+                    vimeusLoading = false
+                }
+            }
+        }
+    }
+
     val filteredItems = remember(query, allItems, selectedFilter) {
         if (query.isBlank()) emptyList()
         else {
@@ -168,9 +216,24 @@ fun SearchScreen(
         return
     }
 
+    selectedVimeus?.let { media ->
+        VimeusDetailScreen(
+            media = media,
+            repository = vimeusRepository,
+            primaryColor = primaryColor,
+            onPlayed = { repository.markVimeusWatched(it) },
+            onBack = { selectedVimeus = null }
+        )
+        return
+    }
+
     val showNsr = selectedFilter != "Canales" &&
         nsrSubmittedQuery.isNotBlank() &&
         nsrSubmittedQuery == query.trim()
+
+    val showVimeus = selectedFilter != "Canales" &&
+        vimeusSubmittedQuery.isNotBlank() &&
+        vimeusSubmittedQuery == query.trim()
 
     val nsrVisibleResults = remember(nsrResults, selectedFilter) {
         when (selectedFilter) {
@@ -180,8 +243,18 @@ fun SearchScreen(
         }
     }
 
+    val vimeusVisibleResults = remember(vimeusResults, selectedFilter) {
+        when (selectedFilter) {
+            "Películas" -> vimeusResults.filter { it.type == VimeusType.MOVIE }
+            "Series" -> vimeusResults.filter { it.type != VimeusType.MOVIE }
+            else -> vimeusResults
+        }
+    }
+
     val noLocal = filteredItems.isEmpty()
     val noNsr = !showNsr || (nsrVisibleResults.isEmpty() && !nsrLoading && nsrError == null)
+    val noVimeus = !showVimeus ||
+        (vimeusVisibleResults.isEmpty() && !vimeusLoading && vimeusError == null)
 
     Column(
         modifier = modifier
@@ -198,10 +271,15 @@ fun SearchScreen(
                     nsrError = null
                     nsrLoading = false
                 }
+                if (newValue.trim() != vimeusSubmittedQuery) {
+                    vimeusResults = emptyList()
+                    vimeusError = null
+                    vimeusLoading = false
+                }
             },
             placeholder = {
                 Text(
-                    "Buscar en listas IPTV y NSRPlay...",
+                    "Buscar en IPTV, NSRPlay y Vimeus...",
                     fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -228,12 +306,15 @@ fun SearchScreen(
                         }
                     }
                     IconButton(
-                        onClick = { submitNsrSearch() },
+                        onClick = {
+                            submitNsrSearch()
+                            submitVimeusSearch()
+                        },
                         modifier = Modifier.testTag("search_nsrplay_button")
                     ) {
                         Icon(
                             imageVector = Icons.Default.Search,
-                            contentDescription = "Buscar también en NSRPlay",
+                            contentDescription = "Buscar en NSRPlay y Vimeus",
                             tint = primaryColor,
                             modifier = Modifier.size(20.dp)
                         )
@@ -242,7 +323,10 @@ fun SearchScreen(
             },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { submitNsrSearch() }),
+            keyboardActions = KeyboardActions(onSearch = {
+                submitNsrSearch()
+                submitVimeusSearch()
+            }),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = primaryColor,
                 unfocusedBorderColor = Color(0xFF22303E),
@@ -306,7 +390,7 @@ fun SearchScreen(
             query.trim() != nsrSubmittedQuery
         ) {
             Text(
-                text = "Toca la lupa para buscar también en NSRPlay",
+                text = "Toca la lupa para buscar también en NSRPlay y Vimeus",
                 color = Color(0xFF7F8F9F),
                 fontSize = 10.sp,
                 modifier = Modifier.padding(top = 6.dp)
@@ -360,7 +444,7 @@ fun SearchScreen(
                     )
                 }
             }
-        } else if (noLocal && noNsr) {
+        } else if (noLocal && noNsr && noVimeus) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -379,8 +463,8 @@ fun SearchScreen(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = if (showNsr) {
-                            "No se encontraron coincidencias para \"$query\" en tus listas ni en NSRPlay."
+                        text = if (showNsr || showVimeus) {
+                            "No se encontraron coincidencias para \"$query\" en tus listas, NSRPlay ni Vimeus."
                         } else {
                             "No se encontraron coincidencias para \"$query\" en tus listas IPTV."
                         },
@@ -392,7 +476,10 @@ fun SearchScreen(
                     if (selectedFilter != "Canales" && query.trim().length >= 2) {
                         Spacer(modifier = Modifier.height(14.dp))
                         Button(
-                            onClick = { submitNsrSearch() },
+                            onClick = {
+                                submitNsrSearch()
+                                submitVimeusSearch()
+                            },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = primaryColor,
                                 contentColor = Color.Black
@@ -400,10 +487,10 @@ fun SearchScreen(
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
-                                text = if (showNsr) {
-                                    "Reintentar búsqueda en NSRPlay"
+                                text = if (showNsr || showVimeus) {
+                                    "Reintentar búsqueda en proveedores"
                                 } else {
-                                    "Buscar también en NSRPlay"
+                                    "Buscar también en NSRPlay y Vimeus"
                                 },
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
@@ -530,6 +617,103 @@ fun SearchScreen(
                             onClick = {
                                 keyboard?.hide()
                                 selectedNsr = media
+                            }
+                        )
+                    }
+                }
+
+                if (showVimeus) {
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(VimeusBadgeColor)
+                                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "VIMEUS",
+                                    color = Color.Black,
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (vimeusVisibleResults.isNotEmpty()) {
+                                    "Vimeus · ${vimeusVisibleResults.size} resultados"
+                                } else {
+                                    "Vimeus"
+                                },
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            TextButton(onClick = { submitVimeusSearch() }) {
+                                Text("Actualizar", color = primaryColor, fontSize = 10.sp)
+                            }
+                        }
+                    }
+
+                    if (vimeusLoading) {
+                        item {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(vertical = 10.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    color = primaryColor,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Buscando en Vimeus...",
+                                    color = Color(0xFF8F9DAA),
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+
+                    vimeusError?.let { message ->
+                        item {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = message,
+                                    color = Color(0xFFFF8A96),
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextButton(onClick = { submitVimeusSearch() }) {
+                                    Text("Reintentar", color = primaryColor, fontSize = 10.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    if (!vimeusLoading && vimeusError == null && vimeusVisibleResults.isEmpty()) {
+                        item {
+                            Text(
+                                text = "Vimeus no devolvió títulos para \"$vimeusSubmittedQuery\".",
+                                color = Color(0xFF7F8F9F),
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+
+                    items(vimeusVisibleResults, key = { "vimeus:" + it.id }) { media ->
+                        VimeusSearchResultCard(
+                            media = media,
+                            isWatched = watchedVimeus.contains(media.watchKey()),
+                            primaryColor = primaryColor,
+                            onClick = {
+                                keyboard?.hide()
+                                selectedVimeus = media
                             }
                         )
                     }
@@ -794,6 +978,122 @@ private fun NsrSearchResultCard(
             Icon(
                 imageVector = Icons.Default.PlayArrow,
                 contentDescription = "Ver servidores",
+                tint = Color.Black,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun VimeusSearchResultCard(
+    media: VimeusMedia,
+    isWatched: Boolean,
+    primaryColor: Color,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFF101923))
+            .border(1.dp, Color(0xFF1B2836), RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 54.dp, height = 48.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color(0xFF172432)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (!media.posterUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = media.posterUrl,
+                    contentDescription = media.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Icon(
+                    imageVector = if (media.type == VimeusType.MOVIE) Icons.Default.Movie
+                    else Icons.Default.Tv,
+                    contentDescription = null,
+                    tint = VimeusBadgeColor,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = media.title,
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(3.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(VimeusBadgeColor)
+                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                ) {
+                    Text(
+                        text = "VIMEUS",
+                        color = Color.Black,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+                if (isWatched) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(primaryColor)
+                            .padding(horizontal = 5.dp, vertical = 1.dp)
+                    ) {
+                        Text(
+                            text = "VISTO",
+                            color = Color.Black,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
+                Text(
+                    text = listOfNotNull(
+                        media.year,
+                        media.totalSeasons.takeIf { it > 0 }?.let { "$it temp." },
+                        if (media.type == VimeusType.MOVIE) "Película" else "Serie"
+                    ).joinToString(" · "),
+                    color = Color(0xFF8F9DAA),
+                    fontSize = 10.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(VimeusBadgeColor),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = "Abrir Vimeus",
                 tint = Color.Black,
                 modifier = Modifier.size(18.dp)
             )

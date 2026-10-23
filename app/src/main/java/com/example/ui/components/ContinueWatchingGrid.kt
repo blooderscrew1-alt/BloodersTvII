@@ -44,6 +44,8 @@ import com.example.data.model.ItemType
 import com.example.data.model.WatchHistoryItem
 import com.example.data.nsrplay.NsrHistoryItem
 import com.example.data.nsrplay.NsrMediaType
+import com.example.data.vimeus.VimeusHistoryItem
+import com.example.data.vimeus.VimeusType
 
 private data class CardEntry(
     val key: String,
@@ -55,8 +57,16 @@ private data class CardEntry(
     val durationMs: Long,
     val lastWatchedTimestamp: Long,
     val nsr: NsrHistoryItem? = null,
+    val vimeus: VimeusHistoryItem? = null,
     val iptv: WatchHistoryItem? = null
-)
+) {
+    val providerLabel: String?
+        get() = when {
+            nsr != null -> "NSRPLAY"
+            vimeus != null -> "VIMEUS"
+            else -> null
+        }
+}
 
 /**
  * Compact, non-lazy grid for "Continuar viendo".
@@ -74,13 +84,15 @@ private data class CardEntry(
 fun ContinueWatchingGrid(
     iptvHistory: List<WatchHistoryItem>,
     nsrHistory: List<NsrHistoryItem>,
+    vimeusHistory: List<VimeusHistoryItem>,
     primaryColor: Color,
     onPlayIptv: (WatchHistoryItem) -> Unit,
     onPlayNsr: (NsrHistoryItem) -> Unit,
+    onPlayVimeus: (VimeusHistoryItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val visible = remember(iptvHistory, nsrHistory) {
-        val merged = ArrayList<CardEntry>(iptvHistory.size + nsrHistory.size)
+    val visible = remember(iptvHistory, nsrHistory, vimeusHistory) {
+        val merged = ArrayList<CardEntry>(iptvHistory.size + nsrHistory.size + vimeusHistory.size)
         iptvHistory.forEach { entry ->
             merged.add(
                 CardEntry(
@@ -108,6 +120,21 @@ fun ContinueWatchingGrid(
                     durationMs = 0L,
                     lastWatchedTimestamp = entry.lastWatchedTimestamp,
                     nsr = entry
+                )
+            )
+        }
+        vimeusHistory.forEach { entry ->
+            merged.add(
+                CardEntry(
+                    key = entry.watchKey,
+                    title = entry.title,
+                    posterUrl = entry.posterUrl,
+                    type = if (entry.type == VimeusType.MOVIE) ItemType.MOVIE else ItemType.SERIES,
+                    progress = null,
+                    positionMs = 0L,
+                    durationMs = 0L,
+                    lastWatchedTimestamp = entry.lastWatchedTimestamp,
+                    vimeus = entry
                 )
             )
         }
@@ -157,10 +184,10 @@ fun ContinueWatchingGrid(
                             entry = entry,
                             primaryColor = primaryColor,
                             onClick = {
-                                if (entry.nsr != null) {
-                                    onPlayNsr(entry.nsr)
-                                } else {
-                                    entry.iptv?.let(onPlayIptv)
+                                when {
+                                    entry.nsr != null -> onPlayNsr(entry.nsr)
+                                    entry.vimeus != null -> onPlayVimeus(entry.vimeus)
+                                    else -> entry.iptv?.let(onPlayIptv)
                                 }
                             },
                             modifier = Modifier.weight(1f)
@@ -186,7 +213,8 @@ private fun ContinueWatchingCard(
     val isFocused by interactionSource.collectIsFocusedAsState()
     val percent = entry.progress?.coerceIn(0f, 1f)
     val remaining = (entry.durationMs - entry.positionMs).coerceAtLeast(0L)
-    val isNsr = entry.nsr != null
+    val provider = entry.providerLabel
+    val isProvider = provider != null
 
     Column(
         modifier = modifier
@@ -250,12 +278,18 @@ private fun ContinueWatchingCard(
                     .align(Alignment.TopStart)
                     .padding(7.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(if (isNsr) Color(0xFF00E5FF) else Color(0xCC000000))
+                    .background(
+                        when (provider) {
+                            "NSRPLAY" -> Color(0xFF00E5FF)
+                            "VIMEUS" -> Color(0xFFFF9F1C)
+                            else -> Color(0xCC000000)
+                        }
+                    )
                     .padding(horizontal = 5.dp, vertical = 2.dp)
             ) {
                 Text(
-                    text = if (isNsr) "NSRPLAY" else if (entry.type == ItemType.SERIES) "SERIE" else "PELÍCULA",
-                    color = if (isNsr) Color.Black else Color(0xFFB8C6D3),
+                    text = provider ?: if (entry.type == ItemType.SERIES) "SERIE" else "PELÍCULA",
+                    color = if (isProvider) Color.Black else Color(0xFFB8C6D3),
                     fontSize = 7.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -272,7 +306,7 @@ private fun ContinueWatchingCard(
             ) {
                 Icon(
                     imageVector = Icons.Default.PlayArrow,
-                    contentDescription = "Reanudar",
+                    contentDescription = if (isProvider) "Abrir" else "Reanudar",
                     tint = Color.Black,
                     modifier = Modifier.size(19.dp)
                 )
@@ -303,13 +337,17 @@ private fun ContinueWatchingCard(
 
         Text(
             text = when {
-                isNsr -> "En NSRPlay · Toca para abrir"
+                isProvider -> "En $provider · Toca para abrir"
                 percent != null && percent >= 0.99f -> "Terminado · toca para repetir"
                 entry.positionMs > 0L && percent != null ->
                     "${(percent * 100).toInt()}% · ${formatRemaining(remaining)} restantes"
                 else -> "Empezar"
             },
-            color = if (isNsr) Color(0xFF66D9E8) else Color(0xFF8F9DAA),
+            color = when (provider) {
+                "NSRPLAY" -> Color(0xFF66D9E8)
+                "VIMEUS" -> Color(0xFFFFC46B)
+                else -> Color(0xFF8F9DAA)
+            },
             fontSize = 9.sp,
             maxLines = 1,
             modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 1.dp, bottom = 7.dp)

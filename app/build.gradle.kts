@@ -21,6 +21,11 @@ val nsrPlayApiKey: String = envValues["NSRPLAY_API_KEY"].orEmpty()
 val nsrPlayBaseUrl: String = envValues["NSRPLAY_BASE_URL"]
   ?.takeIf { it.isNotBlank() }
   ?: "https://nsrplay.space"
+val vimeusApiKey: String = envValues["VIMEUS_API_KEY"].orEmpty()
+val vimeusViewKey: String = envValues["VIMEUS_VIEW_KEY"].orEmpty()
+val vimeusBaseUrl: String = envValues["VIMEUS_BASE_URL"]
+  ?.takeIf { it.isNotBlank() }
+  ?: "https://vimeus.com"
 
 android {
   namespace = "com.example"
@@ -30,8 +35,8 @@ android {
     applicationId = "com.aistudio.blooderstv.kjmnqx"
     minSdk = 24
     targetSdk = 36
-    versionCode = 10
-    versionName = "2.8"
+    versionCode = 11
+    versionName = "2.9"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -41,6 +46,17 @@ android {
       "\"${nsrPlayApiKey.replace("\\", "\\\\").replace("\"", "\\\"")}\""
     )
     buildConfigField("String", "NSRPLAY_BASE_URL", "\"$nsrPlayBaseUrl\"")
+    buildConfigField(
+      "String",
+      "VIMEUS_API_KEY",
+      "\"${vimeusApiKey.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+    )
+    buildConfigField(
+      "String",
+      "VIMEUS_VIEW_KEY",
+      "\"${vimeusViewKey.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+    )
+    buildConfigField("String", "VIMEUS_BASE_URL", "\"$vimeusBaseUrl\"")
   }
 
   // Do not remove or modify these signingConfigs. They are necessary for building, installing,

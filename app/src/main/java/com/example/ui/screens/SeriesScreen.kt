@@ -49,8 +49,13 @@ import com.example.data.nsrplay.NsrMediaType
 import com.example.data.nsrplay.NsrPlayCatalogCache
 import com.example.data.nsrplay.NsrPlayRepository
 import com.example.data.repository.IptvRepository
+import com.example.data.vimeus.VimeusCatalogCache
+import com.example.data.vimeus.VimeusMedia
+import com.example.data.vimeus.VimeusRepository
+import com.example.data.vimeus.VimeusType
 import com.example.ui.components.ContinueWatchingGrid
 import com.example.ui.components.NsrPlayRow
+import com.example.ui.components.VimeusRow
 import com.example.ui.components.NumberedPosterCard
 import com.example.ui.components.StandardPosterCard
 
@@ -65,16 +70,35 @@ fun SeriesScreen(
     val allItems by repository.items.collectAsState()
     val history by repository.history.collectAsState()
     val nsrHistory by repository.nsrHistory.collectAsState()
+    val vimeusHistory by repository.vimeusHistory.collectAsState()
     val watchedNsr by repository.watchedNsr.collectAsState()
+    val watchedVimeus by repository.vimeusWatched.collectAsState()
     val watchedIds = remember(history) { history.map { it.itemId }.toSet() }
 
     val context = LocalContext.current
     val nsrRepository = remember { NsrPlayRepository(context.applicationContext) }
+    val vimeusRepository = remember { VimeusRepository(context.applicationContext) }
     val nsrState by NsrPlayCatalogCache.state(NsrMediaType.SERIES).collectAsState()
+    val vimeusState by VimeusCatalogCache.state(VimeusType.SERIES).collectAsState()
+    val vimeusAnimeState by VimeusCatalogCache.state(VimeusType.ANIME).collectAsState()
     var selectedNsr by remember { mutableStateOf<NsrMedia?>(null) }
+    var selectedVimeus by remember { mutableStateOf<VimeusMedia?>(null) }
 
     LaunchedEffect(Unit) {
         NsrPlayCatalogCache.ensureLoaded(context, NsrMediaType.SERIES)
+        VimeusCatalogCache.ensureLoaded(context, VimeusType.SERIES)
+        VimeusCatalogCache.ensureLoaded(context, VimeusType.ANIME)
+    }
+
+    selectedVimeus?.let { media ->
+        VimeusDetailScreen(
+            media = media,
+            repository = vimeusRepository,
+            primaryColor = primaryColor,
+            onPlayed = { repository.markVimeusWatched(it) },
+            onBack = { selectedVimeus = null }
+        )
+        return
     }
 
     selectedNsr?.let { media ->
@@ -100,9 +124,16 @@ fun SeriesScreen(
         nsrHistory.filter { it.type == NsrMediaType.SERIES }
     }
 
+    val vimeusSeriesHistory = remember(vimeusHistory) {
+        vimeusHistory.filter { it.type.section == ItemType.SERIES }
+    }
+
     if (series.isEmpty() && seriesHistory.isEmpty() && nsrSeriesHistory.isEmpty() &&
-        nsrState.items.isEmpty() && !nsrState.isLoading &&
-        nsrState.error == null && nsrState.loadedAt > 0L
+        vimeusSeriesHistory.isEmpty() && nsrState.items.isEmpty() &&
+        vimeusState.items.isEmpty() && vimeusAnimeState.items.isEmpty() &&
+        !nsrState.isLoading && !vimeusState.isLoading && !vimeusAnimeState.isLoading &&
+        nsrState.error == null && vimeusState.error == null && vimeusAnimeState.error == null &&
+        nsrState.loadedAt > 0L && vimeusState.loadedAt > 0L && vimeusAnimeState.loadedAt > 0L
     ) {
         Box(
             modifier = modifier
@@ -181,11 +212,12 @@ fun SeriesScreen(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // Dynamic "Continuar viendo" grid replaces the old hero banner.
-        if (seriesHistory.isNotEmpty() || nsrSeriesHistory.isNotEmpty()) {
+        if (seriesHistory.isNotEmpty() || nsrSeriesHistory.isNotEmpty() || vimeusSeriesHistory.isNotEmpty()) {
             item {
                 ContinueWatchingGrid(
                     iptvHistory = seriesHistory,
                     nsrHistory = nsrSeriesHistory,
+                    vimeusHistory = vimeusSeriesHistory,
                     primaryColor = primaryColor,
                     onPlayIptv = { entry ->
                         onPlayItem(
@@ -198,7 +230,8 @@ fun SeriesScreen(
                             )
                         )
                     },
-                    onPlayNsr = { entry -> selectedNsr = entry.toMedia() }
+                    onPlayNsr = { entry -> selectedNsr = entry.toMedia() },
+                    onPlayVimeus = { entry -> selectedVimeus = entry.toMedia() }
                 )
             }
         }
@@ -216,6 +249,42 @@ fun SeriesScreen(
                     NsrPlayCatalogCache.ensureLoaded(
                         context = context,
                         type = NsrMediaType.SERIES,
+                        force = true
+                    )
+                }
+            )
+        }
+
+        item {
+            VimeusRow(
+                title = "Vimeus · Series",
+                state = vimeusState,
+                primaryColor = primaryColor,
+                watchedKeys = watchedVimeus,
+                onItemClick = { selectedVimeus = it },
+                onLoadMore = { VimeusCatalogCache.loadMore(context, VimeusType.SERIES) },
+                onRetry = {
+                    VimeusCatalogCache.ensureLoaded(
+                        context = context,
+                        type = VimeusType.SERIES,
+                        force = true
+                    )
+                }
+            )
+        }
+
+        item {
+            VimeusRow(
+                title = "Vimeus · Anime",
+                state = vimeusAnimeState,
+                primaryColor = primaryColor,
+                watchedKeys = watchedVimeus,
+                onItemClick = { selectedVimeus = it },
+                onLoadMore = { VimeusCatalogCache.loadMore(context, VimeusType.ANIME) },
+                onRetry = {
+                    VimeusCatalogCache.ensureLoaded(
+                        context = context,
+                        type = VimeusType.ANIME,
                         force = true
                     )
                 }

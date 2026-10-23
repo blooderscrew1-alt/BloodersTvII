@@ -14,7 +14,9 @@ Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propia
   - cada servidor abre el **reproductor web unificado** basado en Serchwebview.
 - **Reproductor web** (`PlayerWebActivity`): WebView con bloqueo de anuncios y pop-ups, pantalla completa HTML5, control de velocidad, modo escritorio, Picture-in-Picture y pantalla siempre encendida.
 - **Extensiones Chrome/Edge** en el reproductor: paquetes `.zip` o `.crx` con content scripts (JS/CSS), background/service worker y reglas estáticas `declarativeNetRequest` (block, redirect, upgradeScheme). Se gestionan desde **Ajustes → Extensiones**.
-- **Continuar viendo**: cuadrícula dinámica basada en el historial de IPTV **y NSRPlay**, con carátula, progreso, tiempo restante y reanudación desde el punto guardado. Sustituye al banner promocional.
+- **Vimeus**: catálogo de películas, series y anime con paginación, búsqueda por título, detalle con temporadas/episodios y reproducción embed. Se configura desde **Ajustes → Vimeus**.
+- **Continuar viendo**: cuadrícula dinámica basada en el historial de IPTV **y NSRPlay/Vimeus**, con carátula, progreso, tiempo restante y reanudación desde el punto guardado. Sustituye al banner promocional.
+- **Respaldo**: exporta, comparte o importa listas M3U/Xtream y ajustes entre dispositivos desde **Ajustes → Respaldo**.
 - **Etiquetas `VISTO`** en tarjetas de películas/series y en la búsqueda. Se basan en el historial IPTV y en un registro persistente para NSRPlay.
 - **Ajustes**: tema, caché/buffer para conexiones lentas, PIN parental, historial, NSRPlay y extensiones.
 - **Sin Firebase, Room, Retrofit, Moshi ni KSP**: se retiraron dependencias que el código no usaba para reducir tamaño, arranque y tiempo de compilación.
@@ -109,19 +111,19 @@ El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en A
 ### Continuar viendo
 
 - El banner promocional se reemplazó por una **cuadrícula adaptativa** (1–5 columnas según el ancho) con los últimos 8 títulos del historial.
-- Mezcla el historial IPTV (con progreso y reanudación) y el historial NSRPlay (sin minuto, porque el reproductor web del proveedor no lo expone). Los títulos NSRPlay llevan la etiqueta cian `NSRPLAY` y al pulsarlos se abre su detalle para elegir servidor.
+- Mezcla el historial IPTV (con progreso y reanudación) y el historial NSRPlay/Vimeus (sin minuto, porque sus reproductores web no lo exponen). Los títulos de proveedor llevan su etiqueta (`NSRPLAY` cian / `VIMEUS` naranja) y al pulsarlos se abre su detalle para elegir servidor.
+- **Borrar historial** en Ajustes elimina los historiales IPTV, NSRPlay y Vimeus.
 - Cada tarjeta muestra carátula 16:9, tipo, progreso, porcentaje y tiempo restante cuando existe.
 - Al pulsar una tarjeta IPTV, el reproductor arranca en la **posición guardada**; no vuelve al inicio.
 - La posición se actualiza cada 500 ms en memoria y el historial se persiste cada 1,5 s para no castigar el almacenamiento en equipos de gama baja.
 - Al cambiar de canal/película dentro del reproductor también se reanuda el título si tenía progreso.
-- **Borrar historial** en Ajustes elimina tanto el historial IPTV como el de NSRPlay.
 
 ### Etiquetas de contenido visto
 
 - Las tarjetas IPTV se marcan como `VISTO` cuando el título aparece en el historial de reproducción.
-- Los títulos NSRPlay se marcan al abrir un servidor de reproducción; la clave `nsr:<tipo>:<slug>` se guarda en las preferencias de la app.
+- Los títulos NSRPlay y Vimeus se marcan al abrir un servidor de reproducción; las claves `nsr:<tipo>:<slug>` y `vimeus:<tipo>:<id>` se guardan en las preferencias de la app.
 - La etiqueta aparece en Películas, Series, la búsqueda global, el historial y los rankings.
-- **Borrar historial** en Ajustes elimina también las marcas NSRPlay.
+- **Borrar historial** en Ajustes elimina también las marcas de proveedores.
 
 ### Extensiones Chrome/Edge
 
@@ -138,18 +140,37 @@ El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en A
 - Búsqueda global unificada: resultados de IPTV y NSRPlay en la misma lista. La búsqueda local sigue siendo instantánea; NSRPlay se consulta al pulsar la **lupa** o **Enter** (así respetamos su límite de 5 búsquedas/minuto).
 - Cuando el endpoint de búsqueda de NSRPlay devuelve vacío, la app usa las sugerencias públicas de IMDb para convertir una búsqueda parcial en el título completo (“saul” → “Better Call Saul”), prueba el slug en `/content/info` y, si tampoco hay resultado, busca en la primera página del catálogo. IMDb también aporta el póster cuando NSRPlay lo devuelve vacío.
 - Caché de búsquedas de 5 minutos: repetir la misma consulta es instantáneo.
-- Pestañas **General / NSRPlay** en Ajustes: clave, URL, guardar, probar conexión y restablecer sin tocar el código.
+- Ajustes con pestañas **General / NSRPlay / Vimeus / Extensiones / Respaldo**: claves, URL, guardar, probar conexión y restablecer sin tocar el código.
 - Cliente HTTP propio y liviano (`NsrPlayRepository`) con mensajes de error claros para 401/404/429/5xx.
 - Detalle de película/serie y selector de servidores por episodio.
 - `PlayerWebActivity` porta el motor de Serchwebview: `PlayerAdBlocker`, script de auto-skip, fullscreen nativo, velocidad, UA de escritorio, PiP y bloqueo de ventanas emergentes.
+
+### Vimeus
+
+- Cliente `VimeusRepository` para `/api/listing/movies`, `/series`, `/animes` y `/episodes` con header `X-API-Key`.
+- Filas **Vimeus · Películas**, **Vimeus · Series** y **Vimeus · Anime** dentro de las pestañas correspondientes, con paginación y caché de 5 minutos.
+- Búsqueda parcial por IMDb (sin endpoint de búsqueda en Vimeus) que construye los embeds `/e/movie`, `/e/serie` y `/e/anime` con `view_key`.
+- Detalle con póster, sinopsis, temporadas y episodios; cada episodio abre el embed con `se` y `ep`. Si la API entrega `embed_url`, se usa su `view_key` oficial.
+- Historial y etiqueta `VISTO` con la clave `vimeus:<tipo>:<id>`.
+
+### Respaldo entre dispositivos
+
+- Pestaña **Respaldo** en Ajustes con **Exportar**, **Compartir** e **Importar**.
+- Exporta `JSON` con listas M3U por URL, cuentas Xtream, tema, buffer, PIN, categorías bloqueadas, favoritos y claves de NSRPlay/Vimeus.
+- Al importar, las listas M3U/Xtream se vuelven a descargar y se omite cualquier lista duplicada. Las listas pegadas como texto se avisan porque no se pueden reconstruir.
+- El archivo contiene credenciales y API keys: se recomienda compartirlo solo por canales seguros.
 
 ## Estructura relevante
 
 ```
 app/src/main/java/com/example/
 ├─ data/nsrplay/           # modelos, cliente, configuración y caché de NSRPlay
-├─ ui/components/          # AdaptiveDialog, PIN, filtros, cabecera, pósters y fila NSRPlay
+├─ data/vimeus/            # modelos, cliente, configuración y caché de Vimeus
+├─ data/backup/            # exportación/importación de listas y ajustes
+├─ ui/components/          # AdaptiveDialog, PIN, filtros, cabecera, pósters y filas de proveedores
 ├─ ui/screens/NsrPlayDetailScreen.kt
+├─ ui/screens/VimeusDetailScreen.kt
+├─ ui/screens/BackupSettings.kt
 ├─ webplayer/              # PlayerWebActivity + PlayerAdBlocker (Serchwebview)
 └─ MainActivity.kt
 ```
@@ -157,9 +178,11 @@ app/src/main/java/com/example/
 ## Verificación realizada
 
 - `:app:assembleDebug` compila y genera APK.
-- 20 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`, `NsrPlayConfigStoreTest`, `ExtensionEngineTest`, `WatchedContentTest`).
+- 23 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`, `NsrPlayConfigStoreTest`, `ExtensionEngineTest`, `WatchedContentTest`, `VimeusBackupTest`).
 - UI probada en 1920×1080 (tablet/TV), 1080×1920 a 420 dpi (teléfono vertical) y 1920×1080 a 420 dpi (teléfono horizontal): cabecera, botón de listas, diálogo de alta y reproductor web.
 - NSRPlay verificado en producción dentro de Películas (badges `NSRPLAY`) y en la búsqueda global.
+- Vimeus verificado en producción: catálogo de películas, series y anime, detalle de serie con temporadas/episodios, reproducción embed y búsqueda “saul” → “Better Call Saul”.
+- Respaldo verificado exportando a `Download`, leyendo el JSON e importándolo de vuelta.
 - Búsqueda por slug y por sugerencias verificada con “Chappie” y “saul” (encuentra “Better Call Saul” con póster y episodios).
 - La configuración NSRPlay se probó de extremo a extremo: URL de mock, "Probar conexión" (respuesta real), guardado y apertura del catálogo con esa configuración.
 
