@@ -3,6 +3,9 @@ package com.example.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -21,14 +24,23 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -84,6 +96,14 @@ fun SearchPosterCarousel(
             val relative = (page - pagerState.currentPage) - pagerState.currentPageOffsetFraction
             val distance = abs(relative).coerceAtMost(1.6f)
             val selected = distance < 0.55f
+            val interactionSource = remember(page) { MutableInteractionSource() }
+            val isFocused by interactionSource.collectIsFocusedAsState()
+
+            LaunchedEffect(isFocused, page) {
+                if (isFocused) {
+                    pagerState.animateScrollToPage(page)
+                }
+            }
 
             Column(
                 modifier = Modifier
@@ -98,7 +118,23 @@ fun SearchPosterCarousel(
                         translationY = distance * 10.dp.toPx()
                         cameraDistance = 8f * density.density
                     }
-                    .clickable {
+                    .focusable(interactionSource = interactionSource)
+                    .onKeyEvent { event ->
+                        val isSelect = event.type == KeyEventType.KeyDown &&
+                            (event.key == Key.DirectionCenter ||
+                                event.key == Key.Enter ||
+                                event.key == Key.NumPadEnter)
+                        if (isSelect) {
+                            onOpen(page)
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null
+                    ) {
                         if (selected) {
                             onOpen(page)
                         } else {
@@ -119,7 +155,9 @@ fun SearchPosterCarousel(
                         .clip(RoundedCornerShape(10.dp))
                         .background(Color(0xFF14202C))
                         .then(
-                            if (selected) {
+                            if (isFocused) {
+                                Modifier.border(3.dp, Color.White, RoundedCornerShape(10.dp))
+                            } else if (selected) {
                                 Modifier.border(3.dp, accentColor, RoundedCornerShape(10.dp))
                             } else {
                                 Modifier.border(1.dp, Color(0xFF243343), RoundedCornerShape(10.dp))

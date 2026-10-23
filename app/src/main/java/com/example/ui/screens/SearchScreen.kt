@@ -50,9 +50,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -96,6 +105,8 @@ fun SearchScreen(
     val vimeusRepository = remember { VimeusRepository(context.applicationContext) }
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val filterFocusRequester = remember { FocusRequester() }
 
     var query by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("Todo") }
@@ -342,6 +353,15 @@ fun SearchScreen(
             modifier = Modifier
                 .widthIn(max = 900.dp)
                 .fillMaxWidth()
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown) {
+                        focusManager.clearFocus(force = true)
+                        runCatching { filterFocusRequester.requestFocus() }
+                        true
+                    } else {
+                        false
+                    }
+                }
                 .testTag("iptv_search_input")
         )
 
@@ -363,6 +383,11 @@ fun SearchScreen(
                             nsrError = null
                             nsrLoading = false
                         }
+                    },
+                    modifier = if (filter == "Todo") {
+                        Modifier.focusRequester(filterFocusRequester)
+                    } else {
+                        Modifier
                     },
                     label = {
                         Text(

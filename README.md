@@ -126,6 +126,13 @@ El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en A
 - La etiqueta aparece en Películas, Series, la búsqueda global, el historial y los rankings.
 - **Borrar historial** en Ajustes elimina también las marcas de proveedores.
 
+### Navegación con control remoto / teclado
+
+- Los pósters del carrusel son enfocables: borde blanco al enfocar, izquierda/derecha para recorrerlos y Enter/OK para abrir.
+- En la búsqueda, **Abajo** desde el campo de texto lleva a los filtros y otro **Abajo** al carrusel; así no hace falta tocar la pantalla.
+- Pestañas de Ajustes, temporadas/episodios de Vimeus y chips/episodios de NSRPlay también muestran foco y responden al D-pad.
+- El foco se centra automáticamente en el póster seleccionado.
+
 ### Búsqueda visual
 
 - Los resultados se muestran como un carrusel de pósters (Pager) en lugar de filas de lista.
@@ -192,6 +199,7 @@ app/src/main/java/com/example/
 - NSRPlay verificado en producción dentro de Películas (badges `NSRPLAY`) y en la búsqueda global.
 - Vimeus verificado en producción: catálogo de películas, series y anime, detalle de serie con temporadas/episodios, reproducción embed y búsqueda “saul” → “Better Call Saul”.
 - Búsqueda visual verificada con “titanic” y “saul”: carrusel de pósters, orden IPTV → Vimeus → NSRPlay, borde de acento y reflejo.
+- Navegación D-pad verificada en la búsqueda: campo → filtros → carrusel, izquierda/derecha entre pósters y Enter abre el detalle.
 - Respaldo verificado exportando a `Download`, leyendo el JSON e importándolo de vuelta.
 - Búsqueda por slug y por sugerencias verificada con “Chappie” y “saul” (encuentra “Better Call Saul” con póster y episodios).
 - La configuración NSRPlay se probó de extremo a extremo: URL de mock, "Probar conexión" (respuesta real), guardado y apertura del catálogo con esa configuración.

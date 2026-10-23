@@ -5,6 +5,9 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -272,11 +275,22 @@ fun VimeusDetailScreen(
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(seasons) { season ->
                             val selected = season == selectedSeason
+                            val seasonInteraction = remember(season) { MutableInteractionSource() }
+                            val seasonFocused by seasonInteraction.collectIsFocusedAsState()
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
                                     .background(if (selected) Color(0xFFFF9F1C) else Color(0xFF16222E))
-                                    .clickable { selectedSeason = season }
+                                    .border(
+                                        width = if (seasonFocused) 2.dp else 1.dp,
+                                        color = if (seasonFocused) Color.White else Color.Transparent,
+                                        shape = RoundedCornerShape(6.dp)
+                                    )
+                                    .focusable(interactionSource = seasonInteraction)
+                                    .clickable(
+                                        interactionSource = seasonInteraction,
+                                        indication = null
+                                    ) { selectedSeason = season }
                                     .padding(horizontal = 12.dp, vertical = 7.dp)
                             ) {
                                 Text(
@@ -293,13 +307,23 @@ fun VimeusDetailScreen(
 
             if (seasonEpisodes.isNotEmpty()) {
                 items(seasonEpisodes, key = { "${it.season}-${it.episode}" }) { episode ->
+                    val episodeInteraction = remember(episode) { MutableInteractionSource() }
+                    val episodeFocused by episodeInteraction.collectIsFocusedAsState()
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(7.dp))
                             .background(Color(0xFF0F1722))
-                            .border(1.dp, Color(0xFF1B2836), RoundedCornerShape(7.dp))
-                            .clickable {
+                            .border(
+                                width = if (episodeFocused) 2.dp else 1.dp,
+                                color = if (episodeFocused) Color(0xFFFF9F1C) else Color(0xFF1B2836),
+                                shape = RoundedCornerShape(7.dp)
+                            )
+                            .focusable(interactionSource = episodeInteraction)
+                            .clickable(
+                                interactionSource = episodeInteraction,
+                                indication = null
+                            ) {
                                 play(episode.season, episode.episode)
                             }
                             .padding(horizontal = 12.dp, vertical = 10.dp),

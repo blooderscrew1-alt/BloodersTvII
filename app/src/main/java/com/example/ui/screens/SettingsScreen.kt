@@ -3,7 +3,10 @@ package com.example.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -436,12 +439,29 @@ private fun SettingsSectionTabs(
     ) {
         listOf("General", "NSRPlay", "Vimeus", "Extensiones", "Respaldo").forEachIndexed { index, label ->
             val isSelected = selected == index
+            val tabInteraction = remember(index) { MutableInteractionSource() }
+            val isTabFocused by tabInteraction.collectIsFocusedAsState()
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(7.dp))
-                    .background(if (isSelected) primaryColor else Color.Transparent)
-                    .clickable { onSelect(index) }
+                    .background(
+                        when {
+                            isSelected -> primaryColor
+                            isTabFocused -> Color(0xFF1A2A38)
+                            else -> Color.Transparent
+                        }
+                    )
+                    .border(
+                        width = if (isTabFocused) 2.dp else 0.dp,
+                        color = if (isTabFocused) primaryColor else Color.Transparent,
+                        shape = RoundedCornerShape(7.dp)
+                    )
+                    .focusable(interactionSource = tabInteraction)
+                    .clickable(
+                        interactionSource = tabInteraction,
+                        indication = null
+                    ) { onSelect(index) }
                     .padding(vertical = 8.dp)
                     .testTag(
                         when (index) {

@@ -565,17 +565,20 @@ private fun NsrEpisodeRow(
     primaryColor: Color,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(7.dp))
             .background(if (selected) Color(0xFF1A2833) else Color(0xFF0E161F))
             .border(
-                width = if (selected) 1.5.dp else 0.dp,
-                color = if (selected) primaryColor else Color.Transparent,
+                width = if (isFocused) 2.dp else if (selected) 1.5.dp else 0.dp,
+                color = if (isFocused) Color.White else if (selected) primaryColor else Color.Transparent,
                 shape = RoundedCornerShape(7.dp)
             )
-            .clickable(onClick = onClick)
+            .focusable(interactionSource = interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(horizontal = 11.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -618,11 +621,19 @@ private fun TypeChip(
     primaryColor: Color,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(7.dp))
             .background(if (selected) primaryColor else Color(0xFF141F2B))
-            .clickable(onClick = onClick)
+            .border(
+                width = if (isFocused) 2.dp else 0.dp,
+                color = if (isFocused) Color.White else Color.Transparent,
+                shape = RoundedCornerShape(7.dp)
+            )
+            .focusable(interactionSource = interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 6.dp)
     ) {
         Text(
@@ -642,16 +653,20 @@ private fun GenreChip(
     primaryColor: Color,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
             .background(if (selected) primaryColor.copy(alpha = 0.18f) else Color(0xFF101923))
             .border(
-                1.dp,
-                if (selected) primaryColor else Color(0xFF1D2B39),
-                RoundedCornerShape(6.dp)
+                width = if (isFocused) 2.dp else 1.dp,
+                color = if (isFocused) Color.White
+                else if (selected) primaryColor else Color(0xFF1D2B39),
+                shape = RoundedCornerShape(6.dp)
             )
-            .clickable(onClick = onClick)
+            .focusable(interactionSource = interactionSource)
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(horizontal = 9.dp, vertical = 4.dp)
     ) {
         Text(
