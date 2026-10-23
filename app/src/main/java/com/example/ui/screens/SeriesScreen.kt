@@ -64,6 +64,8 @@ fun SeriesScreen(
 ) {
     val allItems by repository.items.collectAsState()
     val history by repository.history.collectAsState()
+    val watchedNsr by repository.watchedNsr.collectAsState()
+    val watchedIds = remember(history) { history.map { it.itemId }.toSet() }
 
     val context = LocalContext.current
     val nsrRepository = remember { NsrPlayRepository(context.applicationContext) }
@@ -79,6 +81,7 @@ fun SeriesScreen(
             media = media,
             repository = nsrRepository,
             primaryColor = primaryColor,
+            onPlayed = { repository.markNsrWatched(it) },
             onBack = { selectedNsr = null }
         )
         return
@@ -178,6 +181,7 @@ fun SeriesScreen(
                 HeroBanner(
                     item = featuredSeries,
                     onPlayClick = { onPlayItem(featuredSeries) },
+                    isWatched = watchedIds.contains(featuredSeries.id),
                     primaryColor = primaryColor
                 )
             }
@@ -209,6 +213,7 @@ fun SeriesScreen(
                                 posterUrl = entry.posterUrl,
                                 subtitle = "Reanudar",
                                 progressPercent = entry.progressPercent,
+                                isWatched = true,
                                 onClick = {
                                     val item = PlaylistItem(
                                         id = entry.itemId,
@@ -233,6 +238,7 @@ fun SeriesScreen(
                 title = "NSRPlay · Series",
                 state = nsrState,
                 primaryColor = primaryColor,
+                watchedKeys = watchedNsr,
                 onItemClick = { selectedNsr = it },
                 onLoadMore = { NsrPlayCatalogCache.loadMore(context, NsrMediaType.SERIES) },
                 onRetry = {
@@ -270,6 +276,7 @@ fun SeriesScreen(
                         NumberedPosterCard(
                             item = item,
                             rank = index + 1,
+                            isWatched = watchedIds.contains(item.id),
                             onClick = { onPlayItem(item) },
                             primaryColor = primaryColor
                         )
@@ -307,6 +314,7 @@ fun SeriesScreen(
                                     title = s.name,
                                     posterUrl = s.logoUrl,
                                     subtitle = s.category,
+                                    isWatched = watchedIds.contains(s.id),
                                     onClick = { onPlayItem(s) },
                                     primaryColor = primaryColor
                                 )

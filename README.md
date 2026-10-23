@@ -14,6 +14,7 @@ Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propia
   - cada servidor abre el **reproductor web unificado** basado en Serchwebview.
 - **Reproductor web** (`PlayerWebActivity`): WebView con bloqueo de anuncios y pop-ups, pantalla completa HTML5, control de velocidad, modo escritorio, Picture-in-Picture y pantalla siempre encendida.
 - **Extensiones Chrome/Edge** en el reproductor: paquetes `.zip` o `.crx` con content scripts (JS/CSS), background/service worker y reglas estáticas `declarativeNetRequest` (block, redirect, upgradeScheme). Se gestionan desde **Ajustes → Extensiones**.
+- **Etiquetas `VISTO`** en tarjetas de películas/series y en la búsqueda. Se basan en el historial IPTV y en un registro persistente para NSRPlay.
 - **Ajustes**: tema, caché/buffer para conexiones lentas, PIN parental, historial, NSRPlay y extensiones.
 - **Sin Firebase, Room, Retrofit, Moshi ni KSP**: se retiraron dependencias que el código no usaba para reducir tamaño, arranque y tiempo de compilación.
 
@@ -104,6 +105,13 @@ El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en A
 - Hero banner con altura proporcional al ancho (170–320 dp) en lugar de 230 dp fijos.
 - Campos de búsqueda con ancho máximo en pantallas grandes.
 
+### Etiquetas de contenido visto
+
+- Las tarjetas IPTV se marcan como `VISTO` cuando el título aparece en el historial de reproducción.
+- Los títulos NSRPlay se marcan al abrir un servidor de reproducción; la clave `nsr:<tipo>:<slug>` se guarda en las preferencias de la app.
+- La etiqueta aparece en Películas, Series, la búsqueda global, el historial y los rankings.
+- **Borrar historial** en Ajustes elimina también las marcas NSRPlay.
+
 ### Extensiones Chrome/Edge
 
 - Pestaña **Extensiones** en Ajustes: instalar `.zip`/`.crx`, activar/desactivar y eliminar.
@@ -138,7 +146,7 @@ app/src/main/java/com/example/
 ## Verificación realizada
 
 - `:app:assembleDebug` compila y genera APK.
-- 18 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`, `NsrPlayConfigStoreTest`, `ExtensionEngineTest`).
+- 19 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`, `NsrPlayConfigStoreTest`, `ExtensionEngineTest`, `WatchedContentTest`).
 - UI probada en 1920×1080 (tablet/TV), 1080×1920 a 420 dpi (teléfono vertical) y 1920×1080 a 420 dpi (teléfono horizontal): cabecera, botón de listas, diálogo de alta y reproductor web.
 - NSRPlay verificado en producción dentro de Películas (badges `NSRPLAY`) y en la búsqueda global.
 - Búsqueda por slug y por sugerencias verificada con “Chappie” y “saul” (encuentra “Better Call Saul” con póster y episodios).

@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import com.example.data.nsrplay.NsrCatalogUiState
 import com.example.data.nsrplay.NsrMedia
 import com.example.data.nsrplay.NsrMediaType
+import com.example.data.nsrplay.watchKey
 
 val NsrBadgeColor = Color(0xFF00E5FF)
 
@@ -42,6 +43,7 @@ fun NsrPlayRow(
     title: String,
     state: NsrCatalogUiState,
     primaryColor: Color,
+    watchedKeys: Set<String> = emptySet(),
     onItemClick: (NsrMedia) -> Unit,
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
@@ -141,6 +143,7 @@ fun NsrPlayRow(
                             },
                             badge = "NSRPLAY",
                             badgeColor = NsrBadgeColor,
+                            isWatched = watchedKeys.contains(media.watchKey()),
                             onClick = { onItemClick(media) },
                             primaryColor = primaryColor
                         )

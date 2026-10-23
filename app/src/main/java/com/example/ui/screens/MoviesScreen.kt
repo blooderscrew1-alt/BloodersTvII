@@ -64,6 +64,8 @@ fun MoviesScreen(
 ) {
     val allItems by repository.items.collectAsState()
     val history by repository.history.collectAsState()
+    val watchedNsr by repository.watchedNsr.collectAsState()
+    val watchedIds = remember(history) { history.map { it.itemId }.toSet() }
 
     val context = LocalContext.current
     val nsrRepository = remember { NsrPlayRepository(context.applicationContext) }
@@ -79,6 +81,7 @@ fun MoviesScreen(
             media = media,
             repository = nsrRepository,
             primaryColor = primaryColor,
+            onPlayed = { repository.markNsrWatched(it) },
             onBack = { selectedNsr = null }
         )
         return
@@ -180,6 +183,7 @@ fun MoviesScreen(
                 HeroBanner(
                     item = heroMovie,
                     onPlayClick = { onPlayItem(heroMovie) },
+                    isWatched = watchedIds.contains(heroMovie.id),
                     primaryColor = primaryColor
                 )
             }
@@ -216,6 +220,7 @@ fun MoviesScreen(
                                 posterUrl = entry.posterUrl,
                                 subtitle = "Reanudar",
                                 progressPercent = entry.progressPercent,
+                                isWatched = true,
                                 onClick = {
                                     val item = PlaylistItem(
                                         id = entry.itemId,
@@ -240,6 +245,7 @@ fun MoviesScreen(
                 title = "NSRPlay · Películas",
                 state = nsrState,
                 primaryColor = primaryColor,
+                watchedKeys = watchedNsr,
                 onItemClick = { selectedNsr = it },
                 onLoadMore = { NsrPlayCatalogCache.loadMore(context, NsrMediaType.MOVIE) },
                 onRetry = {
@@ -281,6 +287,7 @@ fun MoviesScreen(
                         NumberedPosterCard(
                             item = movie,
                             rank = index + 1,
+                            isWatched = watchedIds.contains(movie.id),
                             onClick = { onPlayItem(movie) },
                             primaryColor = primaryColor
                         )
@@ -322,6 +329,7 @@ fun MoviesScreen(
                                     title = movie.name,
                                     posterUrl = movie.logoUrl,
                                     subtitle = movie.category,
+                                    isWatched = watchedIds.contains(movie.id),
                                     onClick = { onPlayItem(movie) },
                                     primaryColor = primaryColor
                                 )

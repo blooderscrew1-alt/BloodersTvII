@@ -61,3 +61,6 @@ data class NsrCatalogPage(
     val page: Int,
     val hasNextPage: Boolean
 )
+
+/** Stable key used to remember which NSRPlay titles were already opened. */
+fun NsrMedia.watchKey(): String = "nsr:${type.apiValue}:$slug"

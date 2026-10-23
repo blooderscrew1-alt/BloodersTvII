@@ -49,6 +49,7 @@ import com.example.data.model.PlaylistItem
 fun HeroBanner(
     item: PlaylistItem,
     onPlayClick: (PlaylistItem) -> Unit,
+    isWatched: Boolean = false,
     primaryColor: Color = Color(0xFFCCFF00),
     modifier: Modifier = Modifier
 ) {
@@ -119,6 +120,24 @@ fun HeroBanner(
                 .align(Alignment.TopStart)
                 .padding(start = 24.dp, top = 16.dp)
         )
+
+        if (isWatched) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(end = 16.dp, top = 14.dp)
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(primaryColor)
+                    .padding(horizontal = 7.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    text = "VISTO",
+                    color = Color.Black,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+        }
 
         // Center / Bottom content
         Column(

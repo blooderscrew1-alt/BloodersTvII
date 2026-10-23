@@ -111,6 +111,7 @@ fun NsrPlayDetailScreen(
     media: NsrMedia,
     repository: NsrPlayRepository,
     primaryColor: Color,
+    onPlayed: (NsrMedia) -> Unit = {},
     onBack: () -> Unit
 ) {
     // Results that came from /content/info already bring their servers or
@@ -155,7 +156,8 @@ fun NsrPlayDetailScreen(
         }
     }
 
-    fun openPlayer(server: NsrServer, label: String) {
+    fun openPlayer(server: NsrServer, label: String, item: NsrMedia) {
+        onPlayed(item)
         val intent = Intent(context, PlayerWebActivity::class.java).apply {
             putExtra(PlayerWebActivity.EXTRA_URL, server.embedUrl)
             putExtra(PlayerWebActivity.EXTRA_TITLE, label)
@@ -333,7 +335,7 @@ fun NsrPlayDetailScreen(
                                 server = server,
                                 primaryColor = primaryColor,
                                 onClick = {
-                                    openPlayer(server, "${info.title} · ${server.language}")
+                                    openPlayer(server, "${info.title} · ${server.language}", info)
                                 }
                             )
                         }
@@ -459,7 +461,8 @@ fun NsrPlayDetailScreen(
                                     onClick = {
                                         openPlayer(
                                             server,
-                                            "${info.title} T${episode.season}E${episode.number} · ${server.language}"
+                                            "${info.title} T${episode.season}E${episode.number} · ${server.language}",
+                                            info
                                         )
                                     }
                                 )

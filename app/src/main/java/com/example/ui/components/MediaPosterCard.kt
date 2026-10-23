@@ -42,6 +42,7 @@ fun NumberedPosterCard(
     item: PlaylistItem,
     rank: Int,
     onClick: () -> Unit,
+    isWatched: Boolean = false,
     primaryColor: Color = Color(0xFFCCFF00),
     modifier: Modifier = Modifier
 ) {
@@ -118,6 +119,24 @@ fun NumberedPosterCard(
                 .align(Alignment.BottomCenter)
                 .padding(horizontal = 8.dp, vertical = 6.dp)
         )
+
+        if (isWatched) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(6.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(primaryColor)
+                    .padding(horizontal = 5.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "VISTO",
+                    color = Color.Black,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+        }
     }
 }
 
@@ -129,6 +148,7 @@ fun StandardPosterCard(
     progressPercent: Float? = null,
     badge: String? = null,
     badgeColor: Color = Color(0xFF00E5FF),
+    isWatched: Boolean = false,
     onClick: () -> Unit,
     primaryColor: Color = Color(0xFFCCFF00),
     modifier: Modifier = Modifier
@@ -180,6 +200,24 @@ fun StandardPosterCard(
                 ) {
                     Text(
                         text = label,
+                        color = Color.Black,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+            }
+
+            if (isWatched) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(primaryColor)
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "VISTO",
                         color = Color.Black,
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Black

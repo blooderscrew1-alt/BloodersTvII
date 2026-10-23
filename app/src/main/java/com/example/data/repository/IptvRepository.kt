@@ -12,6 +12,8 @@ import com.example.data.model.PlaylistSource
 import com.example.data.model.SourceType
 import com.example.data.model.ThemeAccent
 import com.example.data.model.WatchHistoryItem
+import com.example.data.nsrplay.NsrMedia
+import com.example.data.nsrplay.watchKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -38,6 +40,9 @@ class IptvRepository(private val context: Context) {
     private val _history = MutableStateFlow<List<WatchHistoryItem>>(emptyList())
     val history: StateFlow<List<WatchHistoryItem>> = _history.asStateFlow()
 
+    private val _watchedNsr = MutableStateFlow<Set<String>>(emptySet())
+    val watchedNsr: StateFlow<Set<String>> = _watchedNsr.asStateFlow()
+
     private val _favorites = MutableStateFlow<Set<String>>(emptySet())
     val favorites: StateFlow<Set<String>> = _favorites.asStateFlow()
 
@@ -57,7 +62,12 @@ class IptvRepository(private val context: Context) {
         loadSettings()
         loadHistory()
         loadFavorites()
+        loadWatchedNsr()
         loadItems()
+    }
+
+    private fun loadWatchedNsr() {
+        _watchedNsr.value = prefs.getStringSet("watched_nsr_keys", emptySet()) ?: emptySet()
     }
 
     private fun loadSettings() {
@@ -425,9 +435,23 @@ class IptvRepository(private val context: Context) {
         }
     }
 
+    fun markNsrWatched(media: NsrMedia) {
+        val key = media.watchKey()
+        if (_watchedNsr.value.contains(key)) return
+        val updated = _watchedNsr.value + key
+        _watchedNsr.value = updated
+        prefs.edit().putStringSet("watched_nsr_keys", updated).apply()
+    }
+
+    fun isNsrWatched(media: NsrMedia): Boolean = _watchedNsr.value.contains(media.watchKey())
+
     fun clearHistory() {
         _history.value = emptyList()
-        prefs.edit().remove("watch_history_json").apply()
+        _watchedNsr.value = emptySet()
+        prefs.edit()
+            .remove("watch_history_json")
+            .remove("watched_nsr_keys")
+            .apply()
     }
 
     fun setParentalPin(pin: String) {

@@ -68,6 +68,7 @@ import com.example.data.nsrplay.NsrMedia
 import com.example.data.nsrplay.NsrMediaType
 import com.example.data.nsrplay.NsrPlayException
 import com.example.data.nsrplay.NsrPlayRepository
+import com.example.data.nsrplay.watchKey
 import com.example.data.repository.IptvRepository
 import com.example.ui.components.NsrBadgeColor
 import kotlinx.coroutines.launch
@@ -80,6 +81,9 @@ fun SearchScreen(
     modifier: Modifier = Modifier
 ) {
     val allItems by repository.items.collectAsState()
+    val history by repository.history.collectAsState()
+    val watchedNsr by repository.watchedNsr.collectAsState()
+    val watchedIds = remember(history) { history.map { it.itemId }.toSet() }
     val context = LocalContext.current
     val nsrRepository = remember { NsrPlayRepository(context.applicationContext) }
     val scope = rememberCoroutineScope()
@@ -158,6 +162,7 @@ fun SearchScreen(
             media = media,
             repository = nsrRepository,
             primaryColor = primaryColor,
+            onPlayed = { repository.markNsrWatched(it) },
             onBack = { selectedNsr = null }
         )
         return
@@ -426,6 +431,7 @@ fun SearchScreen(
                     items(filteredItems, key = { "iptv:" + it.id }) { item ->
                         IptvSearchResultCard(
                             item = item,
+                            isWatched = watchedIds.contains(item.id),
                             primaryColor = primaryColor,
                             onClick = { onPlayItem(item) }
                         )
@@ -519,6 +525,7 @@ fun SearchScreen(
                     items(nsrVisibleResults, key = { "nsr:" + it.slug }) { media ->
                         NsrSearchResultCard(
                             media = media,
+                            isWatched = watchedNsr.contains(media.watchKey()),
                             primaryColor = primaryColor,
                             onClick = {
                                 keyboard?.hide()
@@ -535,6 +542,7 @@ fun SearchScreen(
 @Composable
 private fun IptvSearchResultCard(
     item: PlaylistItem,
+    isWatched: Boolean,
     primaryColor: Color,
     onClick: () -> Unit
 ) {
@@ -626,12 +634,30 @@ private fun IptvSearchResultCard(
 
                 Spacer(modifier = Modifier.width(6.dp))
 
+                if (isWatched) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(primaryColor)
+                            .padding(horizontal = 5.dp, vertical = 1.dp)
+                    ) {
+                        Text(
+                            text = "VISTO",
+                            color = Color.Black,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
+
                 Text(
                     text = item.category,
                     color = Color(0xFF8F9DAA),
                     fontSize = 11.sp,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
             }
         }
@@ -657,6 +683,7 @@ private fun IptvSearchResultCard(
 @Composable
 private fun NsrSearchResultCard(
     media: NsrMedia,
+    isWatched: Boolean,
     primaryColor: Color,
     onClick: () -> Unit
 ) {
@@ -725,6 +752,23 @@ private fun NsrSearchResultCard(
                 }
 
                 Spacer(modifier = Modifier.width(6.dp))
+
+                if (isWatched) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(primaryColor)
+                            .padding(horizontal = 5.dp, vertical = 1.dp)
+                    ) {
+                        Text(
+                            text = "VISTO",
+                            color = Color.Black,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
 
                 Text(
                     text = listOfNotNull(
