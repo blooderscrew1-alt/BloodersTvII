@@ -16,7 +16,7 @@ Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propia
 - **Extensiones Chrome/Edge** en el reproductor: paquetes `.zip` o `.crx` con content scripts (JS/CSS), background/service worker y reglas estáticas `declarativeNetRequest` (block, redirect, upgradeScheme). Se gestionan desde **Ajustes → Extensiones**.
 - **Vimeus**: catálogo de películas, series y anime con paginación, búsqueda por título, detalle con temporadas/episodios y reproducción embed. Se configura desde **Ajustes → Vimeus**.
 - **Unlimplay**: catálogo de películas, series y anime usando TMDB para metadatos/búsqueda; reproduce mediante los iframes `/f/embed/{tipo}?tmdb=...`. Se configura desde **Ajustes → Unlimplay**.
-- **Búsqueda global** con vista tipo cover-flow: póster central grande, laterales inclinados, borde de acento, reflejo y título/progreso sobre la carátula. IPTV, **Vimeus** y NSRPlay aparecen en ese orden.
+- **Búsqueda global** con vista tipo cover-flow: póster central grande, laterales inclinados, borde de acento, reflejo y título/progreso sobre la carátula. Orden: IPTV → Vimeus → NSRPlay → **Unlimplay al final**.
 - **Deslizador de tamaño de pósters** a la derecha de los filtros de búsqueda; el tamaño elegido se guarda y se aplica a los tres carruseles (IPTV, Vimeus y NSRPlay).
 - **La barra de búsqueda se oculta al pulsar Enter/OK o la lupa**, para dejar más espacio a los resultados. Un icono de lupa a la izquierda de los filtros la vuelve a mostrar y enfoca el campo.
 - **Continuar viendo**: cuadrícula dinámica basada en el historial de IPTV **y NSRPlay/Vimeus**, con carátula, progreso, tiempo restante y reanudación desde el punto guardado. Sustituye al banner promocional.
@@ -151,7 +151,8 @@ El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en A
 - Los resultados se muestran como un carrusel de pósters (Pager) en lugar de filas de lista.
 - La tarjeta central se agranda, recibe el color del proveedor, muestra el título y un reflejo debajo; las laterales se reducen e inclinan.
 - Tocar una tarjeta lateral la centra; tocar la central abre el detalle IPTV/Vimeus/NSRPlay.
-- El orden de las secciones es **IPTV → Vimeus → NSRPlay**.
+- El orden de las secciones es **IPTV → Vimeus → NSRPlay → Unlimplay**.
+- Las filas de Unlimplay también quedan al final de Películas y Series, después del contenido local.
 - A la derecha de los filtros hay un deslizador con escala **A pequeña / A grande** para ajustar el ancho de los pósters (112–210 dp, limitado al 55 % del ancho de pantalla). El valor se guarda en las preferencias y también se incluye en el respaldo.
 - El deslizador de tamaño se guarda en preferencias y también en el respaldo.
 - Tras buscar, la barra desaparece; la lupa compacta de la fila de filtros la restaura.

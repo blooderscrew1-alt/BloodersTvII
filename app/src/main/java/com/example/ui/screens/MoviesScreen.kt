@@ -301,24 +301,6 @@ fun MoviesScreen(
             )
         }
 
-        item {
-            UnlimplayRow(
-                title = "Unlimplay · Películas",
-                state = unlimplayState,
-                primaryColor = primaryColor,
-                watchedKeys = watchedUnlimplay,
-                onItemClick = { selectedUnlimplay = it },
-                onLoadMore = { UnlimplayCatalogCache.loadMore(context, UnlimplayType.MOVIE) },
-                onRetry = {
-                    UnlimplayCatalogCache.ensureLoaded(
-                        context = context,
-                        type = UnlimplayType.MOVIE,
-                        force = true
-                    )
-                }
-            )
-        }
-
         // Section: "■ Destacadas hoy"
         if (movies.isNotEmpty()) {
             item {
@@ -399,6 +381,24 @@ fun MoviesScreen(
                     }
                 }
             }
+        }
+
+        item {
+            UnlimplayRow(
+                title = "Unlimplay · Películas",
+                state = unlimplayState,
+                primaryColor = primaryColor,
+                watchedKeys = watchedUnlimplay,
+                onItemClick = { selectedUnlimplay = it },
+                onLoadMore = { UnlimplayCatalogCache.loadMore(context, UnlimplayType.MOVIE) },
+                onRetry = {
+                    UnlimplayCatalogCache.ensureLoaded(
+                        context = context,
+                        type = UnlimplayType.MOVIE,
+                        force = true
+                    )
+                }
+            )
         }
 
         item {

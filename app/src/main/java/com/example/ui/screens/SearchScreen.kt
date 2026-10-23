@@ -909,104 +909,7 @@ fun SearchScreen(
                     }
                 }
 
-                if (showUnlimplay) {
-                    item {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 10.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(UnlimplayBadgeColor)
-                                    .padding(horizontal = 5.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "UNLIMPLAY",
-                                    color = Color.Black,
-                                    fontSize = 8.sp,
-                                    fontWeight = FontWeight.Black
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (unlimplayVisibleResults.isNotEmpty()) {
-                                    "Unlimplay · ${unlimplayVisibleResults.size} resultados"
-                                } else {
-                                    "Unlimplay"
-                                },
-                                color = Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.weight(1f))
-                            TextButton(onClick = { submitUnlimplaySearch() }) {
-                                Text("Actualizar", color = primaryColor, fontSize = 10.sp)
-                            }
-                        }
-                    }
 
-                    if (unlimplayLoading) {
-                        item {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(vertical = 10.dp)
-                            ) {
-                                CircularProgressIndicator(
-                                    color = primaryColor,
-                                    strokeWidth = 2.dp,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Buscando en Unlimplay...",
-                                    color = Color(0xFF8F9DAA),
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-                    }
-
-                    unlimplayError?.let { message ->
-                        item {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = message,
-                                    color = Color(0xFFFF8A96),
-                                    fontSize = 11.sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                TextButton(onClick = { submitUnlimplaySearch() }) {
-                                    Text("Reintentar", color = primaryColor, fontSize = 10.sp)
-                                }
-                            }
-                        }
-                    }
-
-                    if (!unlimplayLoading && unlimplayError == null && unlimplayVisibleResults.isEmpty()) {
-                        item {
-                            Text(
-                                text = "Unlimplay no devolvió títulos para \"$unlimplaySubmittedQuery\".",
-                                color = Color(0xFF7F8F9F),
-                                fontSize = 10.sp
-                            )
-                        }
-                    }
-
-                    if (unlimplayVisibleResults.isNotEmpty()) {
-                        item {
-                            SearchPosterCarousel(
-                                items = unlimplayPosterItems,
-                                accentColor = UnlimplayBadgeColor,
-                                posterScale = posterScale,
-                                onOpen = { index ->
-                                    keyboard?.hide()
-                                    selectedUnlimplay = unlimplayVisibleResults[index]
-                                }
-                            )
-                        }
-                    }
-                }
 
                 if (showNsr) {
                     item {
@@ -1101,6 +1004,105 @@ fun SearchScreen(
                                 onOpen = { index ->
                                     keyboard?.hide()
                                     selectedNsr = nsrVisibleResults[index]
+                                }
+                            )
+                        }
+                    }
+                }
+
+                if (showUnlimplay) {
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 10.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(UnlimplayBadgeColor)
+                                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "UNLIMPLAY",
+                                    color = Color.Black,
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (unlimplayVisibleResults.isNotEmpty()) {
+                                    "Unlimplay · ${unlimplayVisibleResults.size} resultados"
+                                } else {
+                                    "Unlimplay"
+                                },
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            TextButton(onClick = { submitUnlimplaySearch() }) {
+                                Text("Actualizar", color = primaryColor, fontSize = 10.sp)
+                            }
+                        }
+                    }
+
+                    if (unlimplayLoading) {
+                        item {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(vertical = 10.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    color = primaryColor,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Buscando en Unlimplay...",
+                                    color = Color(0xFF8F9DAA),
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+
+                    unlimplayError?.let { message ->
+                        item {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = message,
+                                    color = Color(0xFFFF8A96),
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextButton(onClick = { submitUnlimplaySearch() }) {
+                                    Text("Reintentar", color = primaryColor, fontSize = 10.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    if (!unlimplayLoading && unlimplayError == null && unlimplayVisibleResults.isEmpty()) {
+                        item {
+                            Text(
+                                text = "Unlimplay no devolvió títulos para \"$unlimplaySubmittedQuery\".",
+                                color = Color(0xFF7F8F9F),
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+
+                    if (unlimplayVisibleResults.isNotEmpty()) {
+                        item {
+                            SearchPosterCarousel(
+                                items = unlimplayPosterItems,
+                                accentColor = UnlimplayBadgeColor,
+                                posterScale = posterScale,
+                                onOpen = { index ->
+                                    keyboard?.hide()
+                                    selectedUnlimplay = unlimplayVisibleResults[index]
                                 }
                             )
                         }

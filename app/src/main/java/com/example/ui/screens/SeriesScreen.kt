@@ -329,42 +329,6 @@ fun SeriesScreen(
             )
         }
 
-        item {
-            UnlimplayRow(
-                title = "Unlimplay · Series",
-                state = unlimplayState,
-                primaryColor = primaryColor,
-                watchedKeys = watchedUnlimplay,
-                onItemClick = { selectedUnlimplay = it },
-                onLoadMore = { UnlimplayCatalogCache.loadMore(context, UnlimplayType.SERIES) },
-                onRetry = {
-                    UnlimplayCatalogCache.ensureLoaded(
-                        context = context,
-                        type = UnlimplayType.SERIES,
-                        force = true
-                    )
-                }
-            )
-        }
-
-        item {
-            UnlimplayRow(
-                title = "Unlimplay · Anime",
-                state = unlimplayAnimeState,
-                primaryColor = primaryColor,
-                watchedKeys = watchedUnlimplay,
-                onItemClick = { selectedUnlimplay = it },
-                onLoadMore = { UnlimplayCatalogCache.loadMore(context, UnlimplayType.ANIME) },
-                onRetry = {
-                    UnlimplayCatalogCache.ensureLoaded(
-                        context = context,
-                        type = UnlimplayType.ANIME,
-                        force = true
-                    )
-                }
-            )
-        }
-
         // Section: "■ Destacadas en tus Listas"
         if (series.isNotEmpty()) {
             item {
@@ -437,6 +401,42 @@ fun SeriesScreen(
                     }
                 }
             }
+        }
+
+        item {
+            UnlimplayRow(
+                title = "Unlimplay · Series",
+                state = unlimplayState,
+                primaryColor = primaryColor,
+                watchedKeys = watchedUnlimplay,
+                onItemClick = { selectedUnlimplay = it },
+                onLoadMore = { UnlimplayCatalogCache.loadMore(context, UnlimplayType.SERIES) },
+                onRetry = {
+                    UnlimplayCatalogCache.ensureLoaded(
+                        context = context,
+                        type = UnlimplayType.SERIES,
+                        force = true
+                    )
+                }
+            )
+        }
+
+        item {
+            UnlimplayRow(
+                title = "Unlimplay · Anime",
+                state = unlimplayAnimeState,
+                primaryColor = primaryColor,
+                watchedKeys = watchedUnlimplay,
+                onItemClick = { selectedUnlimplay = it },
+                onLoadMore = { UnlimplayCatalogCache.loadMore(context, UnlimplayType.ANIME) },
+                onRetry = {
+                    UnlimplayCatalogCache.ensureLoaded(
+                        context = context,
+                        type = UnlimplayType.ANIME,
+                        force = true
+                    )
+                }
+            )
         }
 
         item {
