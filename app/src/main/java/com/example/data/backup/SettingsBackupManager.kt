@@ -64,6 +64,7 @@ object SettingsBackupManager {
         val settings = JSONObject().apply {
             put("themeAccent", repository.themeAccent.value.name)
             put("bufferMode", repository.bufferMode.value.name)
+            put("searchPosterScale", repository.searchPosterScale.value)
             put("parentalPin", repository.parentalPin.value)
             put("lockedCategories", JSONArray(repository.lockedCategories.value.toList()))
             put("favorites", JSONArray(repository.favorites.value.toList()))
@@ -118,6 +119,11 @@ object SettingsBackupManager {
             }
             settings.optString("bufferMode").let { name ->
                 runCatching { BufferMode.valueOf(name) }.getOrNull()?.let { repository.setBufferMode(it) }
+            }
+            if (settings.has("searchPosterScale")) {
+                repository.setSearchPosterScale(
+                    settings.optDouble("searchPosterScale", 0.5).toFloat()
+                )
             }
             settings.optString("parentalPin").takeIf { it.matches(Regex("\\d{4}")) }
                 ?.let { repository.setParentalPin(it) }

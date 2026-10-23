@@ -38,11 +38,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -269,6 +273,12 @@ fun SearchScreen(
     val noVimeus = !showVimeus ||
         (vimeusVisibleResults.isEmpty() && !vimeusLoading && vimeusError == null)
 
+    val savedPosterScale by repository.searchPosterScale.collectAsState()
+    var posterScale by remember { mutableFloatStateOf(savedPosterScale) }
+    LaunchedEffect(savedPosterScale) {
+        posterScale = savedPosterScale
+    }
+
     val iptvPosterItems = remember(filteredItems, watchedIds) {
         filteredItems.map { media ->
             SearchPosterItem(
@@ -420,49 +430,82 @@ fun SearchScreen(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(end = 12.dp),
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
-            items(listOf("Todo", "Canales", "Películas", "Series")) { filter ->
-                val isSelected = selectedFilter == filter
-                FilterChip(
-                    selected = isSelected,
-                    onClick = {
-                        selectedFilter = filter
-                        if (filter == "Canales") {
-                            nsrResults = emptyList()
-                            nsrError = null
-                            nsrLoading = false
-                        }
-                    },
-                    modifier = if (filter == "Todo") {
-                        Modifier.focusRequester(filterFocusRequester)
-                    } else {
-                        Modifier
-                    },
-                    label = {
-                        Text(
-                            text = filter,
-                            fontSize = 11.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            maxLines = 1
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(end = 12.dp),
+                modifier = Modifier.weight(1f)
+            ) {
+                items(listOf("Todo", "Canales", "Películas", "Series")) { filter ->
+                    val isSelected = selectedFilter == filter
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = {
+                            selectedFilter = filter
+                            if (filter == "Canales") {
+                                nsrResults = emptyList()
+                                nsrError = null
+                                nsrLoading = false
+                            }
+                        },
+                        modifier = if (filter == "Todo") {
+                            Modifier.focusRequester(filterFocusRequester)
+                        } else {
+                            Modifier
+                        },
+                        label = {
+                            Text(
+                                text = filter,
+                                fontSize = 11.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                maxLines = 1
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = primaryColor,
+                            selectedLabelColor = Color.Black,
+                            containerColor = Color(0xFF141F2B),
+                            labelColor = Color(0xFF9FB0C0)
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            borderColor = if (isSelected) primaryColor else Color(0xFF233242),
+                            enabled = true,
+                            selected = isSelected
                         )
-                    },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = primaryColor,
-                        selectedLabelColor = Color.Black,
-                        containerColor = Color(0xFF141F2B),
-                        labelColor = Color(0xFF9FB0C0)
-                    ),
-                    border = FilterChipDefaults.filterChipBorder(
-                        borderColor = if (isSelected) primaryColor else Color(0xFF233242),
-                        enabled = true,
-                        selected = isSelected
                     )
-                )
+                }
             }
+
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "A",
+                color = Color(0xFF8F9DAA),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Slider(
+                value = posterScale,
+                onValueChange = { posterScale = it },
+                onValueChangeFinished = { repository.setSearchPosterScale(posterScale) },
+                valueRange = 0f..1f,
+                colors = SliderDefaults.colors(
+                    thumbColor = primaryColor,
+                    activeTrackColor = primaryColor,
+                    inactiveTrackColor = Color(0xFF2A3947)
+                ),
+                modifier = Modifier
+                    .width(116.dp)
+                    .testTag("search_poster_size_slider")
+            )
+            Text(
+                text = "A",
+                color = Color(0xFFB8C6D3),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Black
+            )
         }
 
         if (query.trim().length >= 2 &&
@@ -617,6 +660,7 @@ fun SearchScreen(
                         SearchPosterCarousel(
                             items = iptvPosterItems,
                             accentColor = NsrBadgeColor,
+                            posterScale = posterScale,
                             onOpen = { index -> onPlayItem(filteredItems[index]) }
                         )
                     }
@@ -711,6 +755,7 @@ fun SearchScreen(
                             SearchPosterCarousel(
                                 items = vimeusPosterItems,
                                 accentColor = VimeusBadgeColor,
+                                posterScale = posterScale,
                                 onOpen = { index ->
                                     keyboard?.hide()
                                     selectedVimeus = vimeusVisibleResults[index]
@@ -809,6 +854,7 @@ fun SearchScreen(
                             SearchPosterCarousel(
                                 items = nsrPosterItems,
                                 accentColor = NsrBadgeColor,
+                                posterScale = posterScale,
                                 onOpen = { index ->
                                     keyboard?.hide()
                                     selectedNsr = nsrVisibleResults[index]

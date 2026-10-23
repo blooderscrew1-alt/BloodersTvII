@@ -72,6 +72,7 @@ fun SearchPosterCarousel(
     items: List<SearchPosterItem>,
     accentColor: Color,
     onOpen: (Int) -> Unit,
+    posterScale: Float = 0.5f,
     modifier: Modifier = Modifier
 ) {
     if (items.isEmpty()) return
@@ -80,7 +81,11 @@ fun SearchPosterCarousel(
     val density = LocalDensity.current
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val cardWidth = (maxWidth * 0.44f).coerceIn(132.dp, 160.dp)
+        val normalizedScale = posterScale.coerceIn(0f, 1f)
+        val requestedWidth = 112.dp + (98.dp * normalizedScale)
+        val cardWidth = requestedWidth
+            .coerceAtMost(maxWidth * 0.55f)
+            .coerceAtLeast(96.dp)
         val cardHeight = cardWidth * 1.42f
         val reflectionHeight = cardWidth * 0.32f
 

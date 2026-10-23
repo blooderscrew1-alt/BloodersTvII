@@ -53,6 +53,17 @@ class WatchedContentTest {
     }
 
     @Test
+    fun `search poster size is persisted`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = IptvRepository(context)
+        repository.setSearchPosterScale(0.8f)
+
+        assertEquals(0.8f, repository.searchPosterScale.value, 0.001f)
+        val reloaded = IptvRepository(context)
+        assertEquals(0.8f, reloaded.searchPosterScale.value, 0.001f)
+    }
+
+    @Test
     fun `NSR history keeps the latest title once per key`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = IptvRepository(context)

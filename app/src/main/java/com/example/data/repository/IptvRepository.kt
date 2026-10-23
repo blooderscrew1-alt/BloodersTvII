@@ -60,6 +60,9 @@ class IptvRepository(private val context: Context) {
     private val _isContentLoaded = MutableStateFlow(false)
     val isContentLoaded: StateFlow<Boolean> = _isContentLoaded.asStateFlow()
 
+    private val _searchPosterScale = MutableStateFlow(0.5f)
+    val searchPosterScale: StateFlow<Float> = _searchPosterScale.asStateFlow()
+
     private val _favorites = MutableStateFlow<Set<String>>(emptySet())
     val favorites: StateFlow<Set<String>> = _favorites.asStateFlow()
 
@@ -224,6 +227,8 @@ class IptvRepository(private val context: Context) {
         } catch (_: Exception) {
             BufferMode.SMOOTH_LOW_SPEED
         }
+        _searchPosterScale.value = prefs.getFloat("search_poster_scale", 0.5f)
+            .coerceIn(0f, 1f)
     }
 
     private fun loadFavorites() {
@@ -675,5 +680,11 @@ class IptvRepository(private val context: Context) {
     fun setBufferMode(mode: BufferMode) {
         _bufferMode.value = mode
         prefs.edit().putString("buffer_mode", mode.name).apply()
+    }
+
+    fun setSearchPosterScale(scale: Float) {
+        val clean = scale.coerceIn(0f, 1f)
+        _searchPosterScale.value = clean
+        prefs.edit().putFloat("search_poster_scale", clean).apply()
     }
 }
