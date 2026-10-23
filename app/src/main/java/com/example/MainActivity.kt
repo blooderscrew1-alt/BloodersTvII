@@ -82,7 +82,7 @@ fun MainApp(
     playerManager: SmartPlayerManager,
     primaryColor: Color
 ) {
-    var currentTab by remember { mutableStateOf(AppTab.TELEVISION) }
+    var currentTab by remember { mutableStateOf(AppTab.PELICULAS) }
     var isSearchOpen by remember { mutableStateOf(false) }
     var fullscreenItem by remember { mutableStateOf<PlaylistItem?>(null) }
 
