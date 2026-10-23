@@ -193,7 +193,9 @@ El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en A
 - `UnlimplayRepository` usa la API v3 de TMDB para tendencias, anime y búsqueda multi-título.
 - Filas **Unlimplay · Películas**, **Unlimplay · Series** y **Unlimplay · Anime** con paginación y caché de 5 minutos.
 - Búsqueda global con badge `UNLIMPLAY` y detalle con póster, sinopsis y año.
-- Reproducción con el embed público del ejemplo: `https://unlimplay.com/f/embed/movie/{tmdb_id}` para películas y `https://unlimplay.com/f/embed/tv/{tmdb_id}/{temporada}/{episodio}` para series/anime. Los servidores aparecen dentro del iframe, no se extraen ni se guardan.
+- Reproducción con el iframe completo del ejemplo: `https://unlimplay.com/f/embed/movie/{tmdb_id}` y `/f/embed/tv/{tmdb_id}/{temporada}/{episodio}`. El reproductor se carga dentro de un `<iframe>` con `allowfullscreen` y `referrerpolicy="origin"`, no como URL principal.
+- Unlimplay se abre con un User-Agent móvil de Chrome porque su verificación rechaza el WebView detectado; esto evita la pantalla `ERR_TOKEN_EXPIRED` y muestra el reproductor/iframe real.
+- Los servidores aparecen dentro del iframe, no se extraen ni se guardan.
 - El detalle de series/anime consulta temporadas y episodios en TMDB y actualiza el embed al elegir temporada/episodio.
 - Las películas usan la ruta del ejemplo (`/f/embed/movie/{id}`). Si Unlimplay devuelve su pantalla de token/Cloudflare, es una restricción del proveedor; la app no puede saltarla sin extraer servidores.
 - Historial y etiqueta `VISTO` con la clave `unlimplay:<tipo>:<id>`.
@@ -227,7 +229,7 @@ app/src/main/java/com/example/
 - UI probada en 1920×1080 (tablet/TV), 1080×1920 a 420 dpi (teléfono vertical) y 1920×1080 a 420 dpi (teléfono horizontal): cabecera, botón de listas, diálogo de alta y reproductor web.
 - NSRPlay verificado en producción dentro de Películas (badges `NSRPLAY`) y en la búsqueda global.
 - Vimeus verificado en producción: catálogo de películas, series y anime, detalle de serie con temporadas/episodios, reproducción embed y búsqueda “saul” → “Better Call Saul”.
-- Unlimplay verificado con TMDB real: filas de películas/series/anime, búsqueda “saul”, temporadas/episodios y embed con las rutas `/movie/{id}` y `/tv/{id}/{season}/{episode}` del ejemplo.
+- Unlimplay verificado con TMDB real: filas de películas/series/anime, búsqueda “saul”, temporadas/episodios y embed dentro de iframe. Con User-Agent móvil se mostró el reproductor en lugar del error de token.
 - Búsqueda visual verificada con “titanic” y “saul”: carrusel de pósters, orden IPTV → Vimeus → NSRPlay, borde de acento y reflejo.
 - Deslizador de tamaño verificado: cambia el póster en vivo y conserva el tamaño tras cerrar y abrir la app.
 - Barra de búsqueda oculta/restaurada verificada con toque y D-pad; al ocultarse, el foco pasa a los filtros.

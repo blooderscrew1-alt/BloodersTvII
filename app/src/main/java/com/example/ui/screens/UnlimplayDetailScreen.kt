@@ -116,6 +116,7 @@ fun UnlimplayDetailScreen(
             )
             putExtra(PlayerWebActivity.EXTRA_TITLE, label)
             putExtra(PlayerWebActivity.EXTRA_REFERER, "https://unlimplay.com/")
+            putExtra(PlayerWebActivity.EXTRA_USE_IFRAME, true)
         }
         context.startActivity(intent)
     }

@@ -95,10 +95,13 @@ class PlayerWebActivity : ComponentActivity() {
         const val EXTRA_URL = "extra_url"
         const val EXTRA_TITLE = "extra_title"
         const val EXTRA_REFERER = "extra_referer"
+        const val EXTRA_USE_IFRAME = "extra_use_iframe"
 
         private const val DEFAULT_REFERER = "https://nsrplay.space/"
         private const val DESKTOP_USER_AGENT =
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+        private const val MOBILE_USER_AGENT =
+            "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36"
         private val SPEEDS = floatArrayOf(1f, 1.25f, 1.5f, 2f)
     }
 
@@ -107,6 +110,7 @@ class PlayerWebActivity : ComponentActivity() {
     private var extensions: List<WebExtension> = emptyList()
     private var startUrl: String = ""
     private var referer: String = DEFAULT_REFERER
+    private var useIframe: Boolean = false
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
 
@@ -128,6 +132,7 @@ class PlayerWebActivity : ComponentActivity() {
 
         startUrl = intent.getStringExtra(EXTRA_URL).orEmpty()
         referer = intent.getStringExtra(EXTRA_REFERER).orEmpty().ifBlank { DEFAULT_REFERER }
+        useIframe = intent.getBooleanExtra(EXTRA_USE_IFRAME, false)
         pageTitle = intent.getStringExtra(EXTRA_TITLE).orEmpty()
         desktopMode = isTelevisionOrLargeScreen()
 
@@ -167,6 +172,44 @@ class PlayerWebActivity : ComponentActivity() {
             errorMessage = "No se recibió un enlace de reproducción."
             isLoading = false
         } else {
+            loadStartUrl()
+        }
+    }
+
+    /**
+     * Unlimplay validates its /f/embed page as an iframe. Loading it as a
+     * top-level document returns ERR_TOKEN_EXPIRED; this wrapper is the exact
+     * iframe usage that works on the provider's example page.
+     */
+    private fun loadStartUrl() {
+        if (useIframe) {
+            val safeUrl = startUrl
+                .replace("&", "&amp;")
+                .replace("\"", "&quot;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+            val html = """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <meta charset="UTF-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <style>
+                    html, body { margin:0; padding:0; width:100%; height:100%; background:#000; overflow:hidden; }
+                    iframe { position:fixed; inset:0; width:100%; height:100%; border:0; }
+                  </style>
+                </head>
+                <body>
+                  <iframe src="$safeUrl"
+                    width="100%" height="100%"
+                    allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                    allowfullscreen
+                    referrerpolicy="origin"></iframe>
+                </body>
+                </html>
+            """.trimIndent()
+            webView.loadDataWithBaseURL(referer, html, "text/html", "UTF-8", null)
+        } else {
             webView.loadUrl(startUrl, mapOf("Referer" to referer))
         }
     }
@@ -196,7 +239,11 @@ class PlayerWebActivity : ComponentActivity() {
             displayZoomControls = false
             cacheMode = WebSettings.LOAD_DEFAULT
             mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-            userAgentString = if (desktopMode) DESKTOP_USER_AGENT else null
+            userAgentString = when {
+                useIframe -> MOBILE_USER_AGENT
+                desktopMode -> DESKTOP_USER_AGENT
+                else -> null
+            }
             textZoom = 100
         }
 
@@ -384,13 +431,17 @@ class PlayerWebActivity : ComponentActivity() {
     private fun retry() {
         errorMessage = null
         if (startUrl.isNotBlank()) {
-            webView.loadUrl(startUrl, mapOf("Referer" to referer))
+            loadStartUrl()
         }
     }
 
     private fun toggleDesktopMode() {
         desktopMode = !desktopMode
-        webView.settings.userAgentString = if (desktopMode) DESKTOP_USER_AGENT else null
+        webView.settings.userAgentString = when {
+            useIframe -> MOBILE_USER_AGENT
+            desktopMode -> DESKTOP_USER_AGENT
+            else -> null
+        }
         webView.reload()
     }
 
