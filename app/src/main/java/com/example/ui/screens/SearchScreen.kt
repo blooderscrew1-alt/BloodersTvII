@@ -50,6 +50,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -111,9 +112,12 @@ fun SearchScreen(
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val filterFocusRequester = remember { FocusRequester() }
+    val searchFieldFocusRequester = remember { FocusRequester() }
 
     var query by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("Todo") }
+    var isSearchBarVisible by rememberSaveable { mutableStateOf(true) }
+    var shouldFocusSearchField by remember { mutableStateOf(false) }
 
     var nsrSubmittedQuery by remember { mutableStateOf("") }
     var nsrResults by remember { mutableStateOf<List<NsrMedia>>(emptyList()) }
@@ -201,6 +205,28 @@ fun SearchScreen(
                     vimeusLoading = false
                 }
             }
+        }
+    }
+
+    fun runSearch() {
+        submitNsrSearch()
+        submitVimeusSearch()
+        keyboard?.hide()
+        if (query.trim().length >= 2) {
+            isSearchBarVisible = false
+        }
+    }
+
+    LaunchedEffect(shouldFocusSearchField, isSearchBarVisible) {
+        if (shouldFocusSearchField && isSearchBarVisible) {
+            searchFieldFocusRequester.requestFocus()
+            shouldFocusSearchField = false
+        }
+    }
+
+    LaunchedEffect(isSearchBarVisible) {
+        if (!isSearchBarVisible) {
+            runCatching { filterFocusRequester.requestFocus() }
         }
     }
 
@@ -338,7 +364,8 @@ fun SearchScreen(
             .background(Color(0xFF090E13))
             .padding(horizontal = 20.dp, vertical = 14.dp)
     ) {
-        OutlinedTextField(
+        if (isSearchBarVisible) {
+            OutlinedTextField(
             value = query,
             onValueChange = { newValue ->
                 query = newValue
@@ -383,8 +410,7 @@ fun SearchScreen(
                     }
                     IconButton(
                         onClick = {
-                            submitNsrSearch()
-                            submitVimeusSearch()
+                            runSearch()
                         },
                         modifier = Modifier.testTag("search_nsrplay_button")
                     ) {
@@ -400,8 +426,7 @@ fun SearchScreen(
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = {
-                submitNsrSearch()
-                submitVimeusSearch()
+                runSearch()
             }),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = primaryColor,
@@ -416,6 +441,7 @@ fun SearchScreen(
             modifier = Modifier
                 .widthIn(max = 900.dp)
                 .fillMaxWidth()
+                .focusRequester(searchFieldFocusRequester)
                 .onPreviewKeyEvent { event ->
                     if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown) {
                         focusManager.clearFocus(force = true)
@@ -427,13 +453,35 @@ fun SearchScreen(
                 }
                 .testTag("iptv_search_input")
         )
+        }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        if (isSearchBarVisible) {
+            Spacer(modifier = Modifier.height(10.dp))
+        }
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
         ) {
+            if (!isSearchBarVisible) {
+                IconButton(
+                    onClick = {
+                        isSearchBarVisible = true
+                        shouldFocusSearchField = true
+                    },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .testTag("search_reopen_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Editar búsqueda",
+                        tint = primaryColor,
+                        modifier = Modifier.size(19.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(4.dp))
+            }
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(end = 12.dp),
@@ -599,10 +647,7 @@ fun SearchScreen(
                     if (selectedFilter != "Canales" && query.trim().length >= 2) {
                         Spacer(modifier = Modifier.height(14.dp))
                         Button(
-                            onClick = {
-                                submitNsrSearch()
-                                submitVimeusSearch()
-                            },
+                            onClick = { runSearch() },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = primaryColor,
                                 contentColor = Color.Black
