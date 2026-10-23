@@ -1,14 +1,13 @@
 package com.example.data.unlimplay
 
 import android.content.Context
+import com.example.data.network.HttpClients
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.concurrent.TimeUnit
 
 /**
  * TMDB metadata + Unlimplay embed URLs.
@@ -20,12 +19,7 @@ class UnlimplayRepository(context: Context) {
 
     private val config = UnlimplayConfigStore(context.applicationContext)
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(25, TimeUnit.SECONDS)
-        .callTimeout(30, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(true)
-        .build()
+    private val client = HttpClients.api
 
     val isConfigured: Boolean
         get() = config.apiKey().isNotBlank()

@@ -141,6 +141,10 @@ El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en A
 - Los grupos de categorías se calculan una sola vez (`groupBy`) en lugar de filtrar toda la lista por categoría en cada composición.
 - El reproductor actualiza la posición cada 1 s y guarda el historial cada 3 s, reduciendo recomposiciones y escrituras en equipos lentos.
 - Los episodios de Vimeus se cachean 5 minutos para no repetir la paginación al volver al detalle.
+- Todos los proveedores comparten dos `OkHttpClient` (API y sugerencias IMDb) en vez de crear pools de conexiones por pantalla.
+- Coil usa caché de memoria al 15 %, caché de disco de 128 MB, sin crossfade y respetando menos las cabeceras para reutilizar pósters.
+- Las filas de proveedores cargan escalonadas (250–300 ms) para no lanzar 3–5 peticiones a la vez al entrar a Películas/Series.
+- Las listas usan claves estables (`key`) para evitar recomponer pósters al actualizarse el historial o los favoritos.
 
 ### Navegación con control remoto / teclado
 

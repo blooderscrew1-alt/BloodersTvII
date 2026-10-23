@@ -63,6 +63,7 @@ import com.example.ui.components.UnlimplayRow
 import com.example.ui.components.VimeusRow
 import com.example.ui.components.NumberedPosterCard
 import com.example.ui.components.StandardPosterCard
+import kotlinx.coroutines.delay
 
 @Composable
 fun MoviesScreen(
@@ -96,7 +97,9 @@ fun MoviesScreen(
 
     LaunchedEffect(Unit) {
         NsrPlayCatalogCache.ensureLoaded(context, NsrMediaType.MOVIE)
+        delay(300)
         VimeusCatalogCache.ensureLoaded(context, VimeusType.MOVIE)
+        delay(300)
         UnlimplayCatalogCache.ensureLoaded(context, UnlimplayType.MOVIE)
     }
 
@@ -326,7 +329,7 @@ fun MoviesScreen(
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                     contentPadding = PaddingValues(end = 16.dp)
                 ) {
-                    itemsIndexed(movies.take(10)) { index, movie ->
+                    itemsIndexed(movies.take(10), key = { _, movie -> movie.id }) { index, movie ->
                         NumberedPosterCard(
                             item = movie,
                             rank = index + 1,
@@ -367,7 +370,7 @@ fun MoviesScreen(
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                             contentPadding = PaddingValues(end = 16.dp)
                         ) {
-                            items(catMovies.take(15)) { movie ->
+                            items(catMovies.take(15), key = { it.id }) { movie ->
                                 StandardPosterCard(
                                     title = movie.name,
                                     posterUrl = movie.logoUrl,

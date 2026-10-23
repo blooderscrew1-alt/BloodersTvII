@@ -63,6 +63,7 @@ import com.example.ui.components.UnlimplayRow
 import com.example.ui.components.VimeusRow
 import com.example.ui.components.NumberedPosterCard
 import com.example.ui.components.StandardPosterCard
+import kotlinx.coroutines.delay
 
 @Composable
 fun SeriesScreen(
@@ -98,9 +99,13 @@ fun SeriesScreen(
 
     LaunchedEffect(Unit) {
         NsrPlayCatalogCache.ensureLoaded(context, NsrMediaType.SERIES)
+        delay(250)
         VimeusCatalogCache.ensureLoaded(context, VimeusType.SERIES)
+        delay(250)
         VimeusCatalogCache.ensureLoaded(context, VimeusType.ANIME)
+        delay(250)
         UnlimplayCatalogCache.ensureLoaded(context, UnlimplayType.SERIES)
+        delay(250)
         UnlimplayCatalogCache.ensureLoaded(context, UnlimplayType.ANIME)
     }
 
@@ -350,7 +355,7 @@ fun SeriesScreen(
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                     contentPadding = PaddingValues(end = 16.dp)
                 ) {
-                    itemsIndexed(series.take(10)) { index, item ->
+                    itemsIndexed(series.take(10), key = { _, item -> item.id }) { index, item ->
                         NumberedPosterCard(
                             item = item,
                             rank = index + 1,
@@ -387,7 +392,7 @@ fun SeriesScreen(
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                             contentPadding = PaddingValues(end = 16.dp)
                         ) {
-                            items(catSeries.take(15)) { s ->
+                            items(catSeries.take(15), key = { it.id }) { s ->
                                 StandardPosterCard(
                                     title = s.name,
                                     posterUrl = s.logoUrl,

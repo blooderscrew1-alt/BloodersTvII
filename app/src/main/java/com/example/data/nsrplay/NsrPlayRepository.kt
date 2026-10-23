@@ -2,17 +2,16 @@ package com.example.data.nsrplay
 
 import android.content.Context
 import android.net.Uri
+import com.example.data.network.HttpClients
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.Normalizer
 import java.util.Locale
-import java.util.concurrent.TimeUnit
 
 class NsrPlayException(message: String) : Exception(message)
 
@@ -26,19 +25,8 @@ class NsrPlayRepository(context: Context) {
 
     private val config = NsrPlayConfigStore(context.applicationContext)
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(20, TimeUnit.SECONDS)
-        .readTimeout(35, TimeUnit.SECONDS)
-        .callTimeout(45, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(true)
-        .build()
-
-    private val imdbClient = OkHttpClient.Builder()
-        .connectTimeout(8, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .callTimeout(12, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(true)
-        .build()
+    private val client = HttpClients.api
+    private val imdbClient = HttpClients.suggestions
 
     val isConfigured: Boolean
         get() = config.apiKey().isNotBlank()
