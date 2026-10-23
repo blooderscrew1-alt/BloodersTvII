@@ -27,21 +27,30 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.ItemType
 import com.example.data.model.PlaylistItem
+import com.example.data.nsrplay.NsrMedia
+import com.example.data.nsrplay.NsrMediaType
+import com.example.data.nsrplay.NsrPlayCatalogCache
+import com.example.data.nsrplay.NsrPlayRepository
 import com.example.data.repository.IptvRepository
 import com.example.ui.components.HeroBanner
+import com.example.ui.components.NsrPlayRow
 import com.example.ui.components.NumberedPosterCard
 import com.example.ui.components.StandardPosterCard
 
@@ -56,6 +65,25 @@ fun MoviesScreen(
     val allItems by repository.items.collectAsState()
     val history by repository.history.collectAsState()
 
+    val context = LocalContext.current
+    val nsrRepository = remember { NsrPlayRepository(context.applicationContext) }
+    val nsrState by NsrPlayCatalogCache.state(NsrMediaType.MOVIE).collectAsState()
+    var selectedNsr by remember { mutableStateOf<NsrMedia?>(null) }
+
+    LaunchedEffect(Unit) {
+        NsrPlayCatalogCache.ensureLoaded(context, NsrMediaType.MOVIE)
+    }
+
+    selectedNsr?.let { media ->
+        NsrPlayDetailScreen(
+            media = media,
+            repository = nsrRepository,
+            primaryColor = primaryColor,
+            onBack = { selectedNsr = null }
+        )
+        return
+    }
+
     val movies = remember(allItems) {
         allItems.filter { it.type == ItemType.MOVIE }
     }
@@ -64,7 +92,9 @@ fun MoviesScreen(
         history.filter { it.type == ItemType.MOVIE }
     }
 
-    if (movies.isEmpty()) {
+    if (movies.isEmpty() && nsrState.items.isEmpty() && !nsrState.isLoading &&
+        nsrState.error == null && nsrState.loadedAt > 0L
+    ) {
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -103,7 +133,7 @@ fun MoviesScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Tus películas de listas IPTV o cuentas Xtream aparecerán aquí automáticamente.",
+                    text = "Tus películas de listas IPTV, cuentas Xtream y NSRPlay aparecerán aquí automáticamente.",
                     color = Color(0xFF8F9DAA),
                     fontSize = 13.sp,
                     textAlign = TextAlign.Center,
@@ -204,9 +234,28 @@ fun MoviesScreen(
             }
         }
 
-        // Section: "■ Destacadas hoy"
+        // NSRPlay titles live in the same Movies tab, not in a separate screen.
         item {
-            Column {
+            NsrPlayRow(
+                title = "NSRPlay · Películas",
+                state = nsrState,
+                primaryColor = primaryColor,
+                onItemClick = { selectedNsr = it },
+                onLoadMore = { NsrPlayCatalogCache.loadMore(context, NsrMediaType.MOVIE) },
+                onRetry = {
+                    NsrPlayCatalogCache.ensureLoaded(
+                        context = context,
+                        type = NsrMediaType.MOVIE,
+                        force = true
+                    )
+                }
+            )
+        }
+
+        // Section: "■ Destacadas hoy"
+        if (movies.isNotEmpty()) {
+            item {
+                Column {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(bottom = 12.dp)
@@ -237,6 +286,7 @@ fun MoviesScreen(
                         )
                     }
                 }
+            }
             }
         }
 

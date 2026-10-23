@@ -33,6 +33,9 @@ class NsrPlayRepository(context: Context) {
     val isConfigured: Boolean
         get() = config.apiKey().isNotBlank()
 
+    /** Identifies the active key + URL without exposing the key itself. */
+    fun configFingerprint(): String = config.baseUrl() + "|" + config.apiKey().hashCode()
+
     suspend fun getCatalog(
         type: NsrMediaType,
         page: Int = 1,
@@ -55,6 +58,33 @@ class NsrPlayRepository(context: Context) {
         if (query.isBlank()) return@withContext emptyList()
         val json = get("/api/v1/content/search", mapOf("s" to query.trim()))
         parseDataArray(json)
+    }
+
+    /**
+     * Some NSRPlay searches come back empty even when the title is in the
+     * catalog. If the endpoint returns nothing, look through the first catalog
+     * page of movies and series so the unified search still finds known titles.
+     * The extra calls only happen on an empty response.
+     */
+    suspend fun searchWithCatalogFallback(query: String): List<NsrMedia> {
+        val cleanQuery = query.trim()
+        if (cleanQuery.isBlank()) return emptyList()
+
+        val direct = try {
+            search(cleanQuery)
+        } catch (_: Throwable) {
+            emptyList()
+        }
+        if (direct.isNotEmpty()) return direct
+
+        val movies = getCatalog(NsrMediaType.MOVIE, page = 1).items
+        val series = getCatalog(NsrMediaType.SERIES, page = 1).items
+        val catalogResults = movies + series
+
+        return catalogResults
+            .filter { it.title.contains(cleanQuery, ignoreCase = true) }
+            .distinctBy { it.type.apiValue + ":" + it.slug }
+            .take(30)
     }
 
     suspend fun getInfo(slug: String, type: NsrMediaType): NsrMedia = withContext(Dispatchers.IO) {

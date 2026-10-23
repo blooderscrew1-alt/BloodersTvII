@@ -52,6 +52,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.nsrplay.NsrPlayCatalogCache
 import com.example.data.nsrplay.NsrPlayConfigStore
 import com.example.data.nsrplay.NsrPlayException
 import com.example.data.nsrplay.NsrPlayRepository
@@ -192,9 +193,10 @@ fun NsrPlaySettingsContent(
                                 return@Button
                             }
                             store.save(apiKey, cleanBase)
+                            NsrPlayCatalogCache.invalidate()
                             apiKey = store.storedApiKey().orEmpty()
                             baseUrl = store.baseUrl()
-                            feedback = "Configuración guardada. Se aplicará al abrir NSRPlay."
+                            feedback = "Configuración guardada. Se aplicará al abrir Películas, Series o buscar."
                             feedbackIsError = false
                         },
                         colors = ButtonDefaults.buttonColors(
@@ -270,6 +272,7 @@ fun NsrPlaySettingsContent(
                         TextButton(
                             onClick = {
                                 store.reset()
+                                NsrPlayCatalogCache.invalidate()
                                 apiKey = store.storedApiKey().orEmpty()
                                 baseUrl = store.baseUrl()
                                 lastLatencyMs = 0L

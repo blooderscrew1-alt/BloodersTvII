@@ -127,6 +127,8 @@ fun StandardPosterCard(
     posterUrl: String?,
     subtitle: String? = null,
     progressPercent: Float? = null,
+    badge: String? = null,
+    badgeColor: Color = Color(0xFF00E5FF),
     onClick: () -> Unit,
     primaryColor: Color = Color(0xFFCCFF00),
     modifier: Modifier = Modifier
@@ -165,6 +167,25 @@ fun StandardPosterCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
+
+            // Provider badge (e.g. NSRPLAY). IPTV cards leave it null.
+            badge?.let { label ->
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(6.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(badgeColor)
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = label,
+                        color = Color.Black,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+            }
 
             // Progress bar if in continue watching
             if (progressPercent != null && progressPercent > 0f) {

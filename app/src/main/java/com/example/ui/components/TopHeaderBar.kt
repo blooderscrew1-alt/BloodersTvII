@@ -30,11 +30,8 @@ import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,19 +40,13 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 enum class AppTab(val label: String) {
     TELEVISION("Televisión"),
     PELICULAS("Películas"),
     SERIES("Series"),
-    NSRPLAY("NSRPlay"),
     PLAYLISTS("Playlists"),
-    AJUSTES("Ajustes"),
-    PREMIUM("Premium")
+    AJUSTES("Ajustes")
 }
 
 @Composable
@@ -66,22 +57,7 @@ fun TopHeaderBar(
     primaryColor: Color = Color(0xFFCCFF00),
     modifier: Modifier = Modifier
 ) {
-    var currentTimeString by remember { mutableStateOf("") }
     val tabsScrollState = rememberScrollState()
-
-    LaunchedEffect(Unit) {
-        val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
-        val dateFormat = SimpleDateFormat("dd MMM", Locale("es", "ES"))
-        while (true) {
-            val now = Date()
-            val time = timeFormat.format(now).lowercase(Locale.getDefault())
-            val date = dateFormat.format(now)
-            currentTimeString = "$time • $date"
-            // Minute precision is enough: updating every second recomposed the
-            // whole header (and all tabs) 60x more often on low-end devices.
-            delay(30_000)
-        }
-    }
 
     BoxWithConstraints(
         modifier = modifier
@@ -204,26 +180,6 @@ fun TopHeaderBar(
             }
         }
 
-        Spacer(modifier = Modifier.width(6.dp))
-
-        // Right: Live Clock & Date badge. Hidden on narrow phones so the nav tabs
-        // always keep a usable width instead of being squeezed off-screen.
-        if (!compact) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFF101720))
-                    .padding(horizontal = 8.dp, vertical = 5.dp)
-            ) {
-                Text(
-                    text = currentTimeString,
-                    color = Color(0xFFA0B0C0),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.testTag("live_clock_text")
-                )
-            }
         }
         }
     }
-}

@@ -5,11 +5,12 @@ Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propia
 ## Qué incluye
 
 - **TV en vivo** desde listas M3U/M3U8 y Xtream Codes, con zapping y favoritos.
-- **Películas y series** de tus listas IPTV.
-- **NSRPlay** como proveedor adicional de películas y series:
-  - catálogo paginado y filtros por género;
-  - búsqueda explícita (no se dispara una petición por cada tecla);
-  - detalle con sinopsis, reparto de servidores y, en series, temporadas/episodios;
+- **Películas y series** de tus listas IPTV y de NSRPlay, en la misma pestaña.
+- **NSRPlay integrado** (sin pestaña propia):
+  - sus títulos aparecen junto a los de IPTV en **Películas**, **Series** y la **búsqueda global**;
+  - cada tarjeta NSRPlay lleva una insignia `NSRPLAY`;
+  - búsqueda explícita con la lupa (no se dispara una petición por cada tecla);
+  - detalle con sinopsis, servidores y, en series, temporadas/episodios;
   - cada servidor abre el **reproductor web unificado** basado en Serchwebview.
 - **Reproductor web** (`PlayerWebActivity`): WebView con bloqueo de anuncios y pop-ups, pantalla completa HTML5, control de velocidad, modo escritorio, Picture-in-Picture y pantalla siempre encendida.
 - **Ajustes**: tema, caché/buffer para conexiones lentas, PIN parental e historial.
@@ -19,7 +20,7 @@ Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propia
 
 ### Desde la app (recomendado)
 
-Abre **Ajustes → NSRPlay** y pega la API Key ahí. También puedes cambiar la URL del servicio si usas un proxy. La configuración se guarda en el dispositivo y se aplica al volver a la pestaña NSRPlay; **no hay que editar código ni recompilar**.
+Abre **Ajustes → NSRPlay** y pega la API Key ahí. También puedes cambiar la URL del servicio si usas un proxy. La configuración se guarda en el dispositivo y se aplica al volver a Películas, Series o la búsqueda; **no hay que editar código ni recompilar**.
 
 La pestaña incluye:
 
@@ -46,7 +47,7 @@ NSRPLAY_API_KEY=tu_clave_real
 
 3. Recompila la app.
 
-Si no hay clave, la pestaña NSRPlay muestra un aviso en lugar de fallar.
+Si no hay clave, las filas de NSRPlay muestran un aviso en lugar de romper la navegación.
 
 > **Importante para distribuir la app:** cualquier clave incluida en un APK es recuperable por terceros. La documentación de NSRPlay prohíbe publicar la clave en el cliente. Para una versión pública, coloca un proxy propio (una función serverless basta) que añada el header `X-API-Key`, y apunta la app a ese proxy.
 
@@ -82,17 +83,19 @@ El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en A
 - `PlaylistsScreen`: en pantallas angostas el título y el botón "Agregar Lista" se apilan; antes el botón quedaba comprimido a una franja vertical de 10 dp al borde de la pantalla.
 - `CategoryFilterDialog`: cabecera compacta, lista con altura mínima garantizada y footer que se apila en pantallas angostas.
 - `ParentalPinDialog`: teclado y tipografía adaptativos; en horizontal muy bajo se compacta y todo el contenido puede desplazarse.
-- `TopHeaderBar`: se oculta el reloj en pantallas angostas, tamaños reducidos, `statusBars` respetadas y actualización del reloj cada 30 s (antes cada segundo recomponía toda la cabecera).
+- `TopHeaderBar`: **se eliminaron el reloj y la fecha**; de paso desaparece la recomposición periódica que provocaban. Tamaños reducidos y `statusBars` respetadas.
+- **Eliminada la pestaña y la tarjeta Premium**, que no aportaba funcionalidad.
 - Chips de búsqueda en `LazyRow` para que nunca se corten.
 - Hero banner con altura proporcional al ancho (170–320 dp) en lugar de 230 dp fijos.
 - Campos de búsqueda con ancho máximo en pantallas grandes.
 
 ### NSRPlay + Serchwebview
 
-- Pestaña **NSRPlay** dentro de la navegación principal.
+- Sin pestaña NSRPlay: sus títulos se muestran dentro de **Películas**, **Series** y la **búsqueda global**, con insignia `NSRPLAY` en cada tarjeta.
+- Caché en memoria de 5 minutos para el catálogo (compartida entre pestañas) y carga de más títulos bajo demanda; así cambiar de pestaña no vuelve a pedir el catálogo ni muestra un spinner innecesario.
+- Búsqueda global unificada: resultados de IPTV y NSRPlay en la misma lista. La lupa/Enter consulta NSRPlay; si su endpoint de búsqueda devuelve vacío, se buscan coincidencias en el catálogo en memoria.
 - Pestañas **General / NSRPlay** en Ajustes: clave, URL, guardar, probar conexión y restablecer sin tocar el código.
 - Cliente HTTP propio y liviano (`NsrPlayRepository`) con mensajes de error claros para 401/404/429/5xx.
-- Grilla adaptativa de pósters, sin animaciones de escala, con carga de más páginas bajo demanda.
 - Detalle de película/serie y selector de servidores por episodio.
 - `PlayerWebActivity` porta el motor de Serchwebview: `PlayerAdBlocker`, script de auto-skip, fullscreen nativo, velocidad, UA de escritorio, PiP y bloqueo de ventanas emergentes.
 
@@ -100,9 +103,9 @@ El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en A
 
 ```
 app/src/main/java/com/example/
-├─ data/nsrplay/           # modelos + cliente de la API NSRPlay
-├─ ui/components/          # AdaptiveDialog, PIN, filtros, cabecera, pósters
-├─ ui/screens/NsrPlayScreen.kt
+├─ data/nsrplay/           # modelos, cliente, configuración y caché de NSRPlay
+├─ ui/components/          # AdaptiveDialog, PIN, filtros, cabecera, pósters y fila NSRPlay
+├─ ui/screens/NsrPlayDetailScreen.kt
 ├─ webplayer/              # PlayerWebActivity + PlayerAdBlocker (Serchwebview)
 └─ MainActivity.kt
 ```
@@ -112,8 +115,8 @@ app/src/main/java/com/example/
 - `:app:assembleDebug` compila y genera APK.
 - 13 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`, `NsrPlayConfigStoreTest`).
 - UI probada en 1920×1080 (tablet/TV), 1080×1920 a 420 dpi (teléfono vertical) y 1920×1080 a 420 dpi (teléfono horizontal): cabecera, botón de listas, diálogo de alta y reproductor web.
-- El catálogo/detalle de NSRPlay se validó contra un mock local porque la red del emulador de pruebas bloquea `nsrplay.space`; la app real usa la URL de producción.
-- La configuración NSRPlay se probó de extremo a extremo: URL de mock, "Probar conexión" (respuesta real), guardado y apertura de la pestaña NSRPlay con esa configuración.
+- NSRPlay verificado en producción dentro de Películas (badges `NSRPLAY`) y en la búsqueda global.
+- La configuración NSRPlay se probó de extremo a extremo: URL de mock, "Probar conexión" (respuesta real), guardado y apertura del catálogo con esa configuración.
 
 ## Aviso
 
