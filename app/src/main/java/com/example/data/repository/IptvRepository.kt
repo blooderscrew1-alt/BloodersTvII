@@ -12,7 +12,9 @@ import com.example.data.model.PlaylistSource
 import com.example.data.model.SourceType
 import com.example.data.model.ThemeAccent
 import com.example.data.model.WatchHistoryItem
+import com.example.data.nsrplay.NsrHistoryItem
 import com.example.data.nsrplay.NsrMedia
+import com.example.data.nsrplay.NsrMediaType
 import com.example.data.nsrplay.watchKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +45,9 @@ class IptvRepository(private val context: Context) {
     private val _watchedNsr = MutableStateFlow<Set<String>>(emptySet())
     val watchedNsr: StateFlow<Set<String>> = _watchedNsr.asStateFlow()
 
+    private val _nsrHistory = MutableStateFlow<List<NsrHistoryItem>>(emptyList())
+    val nsrHistory: StateFlow<List<NsrHistoryItem>> = _nsrHistory.asStateFlow()
+
     private val _favorites = MutableStateFlow<Set<String>>(emptySet())
     val favorites: StateFlow<Set<String>> = _favorites.asStateFlow()
 
@@ -63,7 +68,60 @@ class IptvRepository(private val context: Context) {
         loadHistory()
         loadFavorites()
         loadWatchedNsr()
+        loadNsrHistory()
         loadItems()
+    }
+
+    private fun loadNsrHistory() {
+        val raw = prefs.getString("nsr_history_json", null)
+        if (raw.isNullOrBlank()) return
+        try {
+            val array = JSONArray(raw)
+            val list = mutableListOf<NsrHistoryItem>()
+            for (i in 0 until array.length()) {
+                val obj = array.optJSONObject(i) ?: continue
+                val slug = obj.optString("slug")
+                if (slug.isBlank()) continue
+                val type = try {
+                    NsrMediaType.valueOf(obj.optString("type", NsrMediaType.MOVIE.apiValue).uppercase())
+                } catch (_: Exception) {
+                    NsrMediaType.MOVIE
+                }
+                list.add(
+                    NsrHistoryItem(
+                        slug = slug,
+                        type = type,
+                        title = obj.optString("title").ifBlank { slug },
+                        posterUrl = obj.optString("posterUrl").takeIf { it.isNotBlank() },
+                        year = obj.optString("year").takeIf { it.isNotBlank() },
+                        lastWatchedTimestamp = obj.optLong("lastWatchedTimestamp", 0L)
+                    )
+                )
+            }
+            _nsrHistory.value = list.sortedByDescending { it.lastWatchedTimestamp }.take(30)
+        } catch (_: Throwable) {
+        }
+    }
+
+    private fun saveNsrHistory(list: List<NsrHistoryItem>) {
+        repoScope.launch {
+            try {
+                val array = JSONArray()
+                list.forEach { entry ->
+                    val obj = JSONObject().apply {
+                        put("slug", entry.slug)
+                        put("type", entry.type.apiValue)
+                        put("title", entry.title)
+                        put("posterUrl", entry.posterUrl ?: "")
+                        put("year", entry.year ?: "")
+                        put("lastWatchedTimestamp", entry.lastWatchedTimestamp)
+                    }
+                    array.put(obj)
+                }
+                prefs.edit().putString("nsr_history_json", array.toString()).apply()
+            } catch (_: Throwable) {
+            }
+        }
     }
 
     private fun loadWatchedNsr() {
@@ -437,10 +495,25 @@ class IptvRepository(private val context: Context) {
 
     fun markNsrWatched(media: NsrMedia) {
         val key = media.watchKey()
-        if (_watchedNsr.value.contains(key)) return
-        val updated = _watchedNsr.value + key
-        _watchedNsr.value = updated
-        prefs.edit().putStringSet("watched_nsr_keys", updated).apply()
+        if (!_watchedNsr.value.contains(key)) {
+            val updated = _watchedNsr.value + key
+            _watchedNsr.value = updated
+            prefs.edit().putStringSet("watched_nsr_keys", updated).apply()
+        }
+
+        val entry = NsrHistoryItem(
+            slug = media.slug,
+            type = media.type,
+            title = media.title,
+            posterUrl = media.poster,
+            year = media.year,
+            lastWatchedTimestamp = System.currentTimeMillis()
+        )
+        val updatedHistory = (_nsrHistory.value.filterNot { it.watchKey == key } + entry)
+            .sortedByDescending { it.lastWatchedTimestamp }
+            .take(30)
+        _nsrHistory.value = updatedHistory
+        saveNsrHistory(updatedHistory)
     }
 
     fun isNsrWatched(media: NsrMedia): Boolean = _watchedNsr.value.contains(media.watchKey())
@@ -448,9 +521,11 @@ class IptvRepository(private val context: Context) {
     fun clearHistory() {
         _history.value = emptyList()
         _watchedNsr.value = emptySet()
+        _nsrHistory.value = emptyList()
         prefs.edit()
             .remove("watch_history_json")
             .remove("watched_nsr_keys")
+            .remove("nsr_history_json")
             .apply()
     }
 

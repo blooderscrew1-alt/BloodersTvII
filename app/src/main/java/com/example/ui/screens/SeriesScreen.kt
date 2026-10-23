@@ -64,6 +64,7 @@ fun SeriesScreen(
 ) {
     val allItems by repository.items.collectAsState()
     val history by repository.history.collectAsState()
+    val nsrHistory by repository.nsrHistory.collectAsState()
     val watchedNsr by repository.watchedNsr.collectAsState()
     val watchedIds = remember(history) { history.map { it.itemId }.toSet() }
 
@@ -95,7 +96,12 @@ fun SeriesScreen(
         history.filter { it.type == ItemType.SERIES }
     }
 
-    if (series.isEmpty() && seriesHistory.isEmpty() && nsrState.items.isEmpty() && !nsrState.isLoading &&
+    val nsrSeriesHistory = remember(nsrHistory) {
+        nsrHistory.filter { it.type == NsrMediaType.SERIES }
+    }
+
+    if (series.isEmpty() && seriesHistory.isEmpty() && nsrSeriesHistory.isEmpty() &&
+        nsrState.items.isEmpty() && !nsrState.isLoading &&
         nsrState.error == null && nsrState.loadedAt > 0L
     ) {
         Box(
@@ -175,12 +181,13 @@ fun SeriesScreen(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // Dynamic "Continuar viendo" grid replaces the old hero banner.
-        if (seriesHistory.isNotEmpty()) {
+        if (seriesHistory.isNotEmpty() || nsrSeriesHistory.isNotEmpty()) {
             item {
                 ContinueWatchingGrid(
-                    history = seriesHistory,
+                    iptvHistory = seriesHistory,
+                    nsrHistory = nsrSeriesHistory,
                     primaryColor = primaryColor,
-                    onPlay = { entry ->
+                    onPlayIptv = { entry ->
                         onPlayItem(
                             PlaylistItem(
                                 id = entry.itemId,
@@ -190,7 +197,8 @@ fun SeriesScreen(
                                 type = entry.type
                             )
                         )
-                    }
+                    },
+                    onPlayNsr = { entry -> selectedNsr = entry.toMedia() }
                 )
             }
         }

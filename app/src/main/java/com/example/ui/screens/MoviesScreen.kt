@@ -64,6 +64,7 @@ fun MoviesScreen(
 ) {
     val allItems by repository.items.collectAsState()
     val history by repository.history.collectAsState()
+    val nsrHistory by repository.nsrHistory.collectAsState()
     val watchedNsr by repository.watchedNsr.collectAsState()
     val watchedIds = remember(history) { history.map { it.itemId }.toSet() }
 
@@ -95,7 +96,12 @@ fun MoviesScreen(
         history.filter { it.type == ItemType.MOVIE }
     }
 
-    if (movies.isEmpty() && movieHistory.isEmpty() && nsrState.items.isEmpty() && !nsrState.isLoading &&
+    val nsrMovieHistory = remember(nsrHistory) {
+        nsrHistory.filter { it.type == NsrMediaType.MOVIE }
+    }
+
+    if (movies.isEmpty() && movieHistory.isEmpty() && nsrMovieHistory.isEmpty() &&
+        nsrState.items.isEmpty() && !nsrState.isLoading &&
         nsrState.error == null && nsrState.loadedAt > 0L
     ) {
         Box(
@@ -175,12 +181,13 @@ fun MoviesScreen(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // Dynamic "Continuar viendo" grid replaces the old hero banner.
-        if (movieHistory.isNotEmpty()) {
+        if (movieHistory.isNotEmpty() || nsrMovieHistory.isNotEmpty()) {
             item {
                 ContinueWatchingGrid(
-                    history = movieHistory,
+                    iptvHistory = movieHistory,
+                    nsrHistory = nsrMovieHistory,
                     primaryColor = primaryColor,
-                    onPlay = { entry ->
+                    onPlayIptv = { entry ->
                         onPlayItem(
                             PlaylistItem(
                                 id = entry.itemId,
@@ -190,7 +197,8 @@ fun MoviesScreen(
                                 type = entry.type
                             )
                         )
-                    }
+                    },
+                    onPlayNsr = { entry -> selectedNsr = entry.toMedia() }
                 )
             }
         }

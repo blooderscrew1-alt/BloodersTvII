@@ -145,7 +145,13 @@ fun NsrPlayDetailScreen(
         error = null
         try {
             val info = repository.getInfo(media.slug, media.type)
-            detail = info
+            detail = info.copy(
+                poster = info.poster?.takeIf { it.isNotBlank() } ?: media.poster,
+                title = info.title.ifBlank { media.title },
+                year = info.year ?: media.year,
+                rating = info.rating ?: media.rating,
+                synopsis = info.synopsis ?: media.synopsis
+            )
             selectedSeasonNumber = info.seasons.firstOrNull()?.number ?: 1
         } catch (e: NsrPlayException) {
             error = e.message

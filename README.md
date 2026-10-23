@@ -14,7 +14,7 @@ Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propia
   - cada servidor abre el **reproductor web unificado** basado en Serchwebview.
 - **Reproductor web** (`PlayerWebActivity`): WebView con bloqueo de anuncios y pop-ups, pantalla completa HTML5, control de velocidad, modo escritorio, Picture-in-Picture y pantalla siempre encendida.
 - **Extensiones Chrome/Edge** en el reproductor: paquetes `.zip` o `.crx` con content scripts (JS/CSS), background/service worker y reglas estáticas `declarativeNetRequest` (block, redirect, upgradeScheme). Se gestionan desde **Ajustes → Extensiones**.
-- **Continuar viendo**: cuadrícula dinámica basada en el historial, con carátula, progreso, tiempo restante y reanudación desde el punto guardado. Sustituye al banner promocional.
+- **Continuar viendo**: cuadrícula dinámica basada en el historial de IPTV **y NSRPlay**, con carátula, progreso, tiempo restante y reanudación desde el punto guardado. Sustituye al banner promocional.
 - **Etiquetas `VISTO`** en tarjetas de películas/series y en la búsqueda. Se basan en el historial IPTV y en un registro persistente para NSRPlay.
 - **Ajustes**: tema, caché/buffer para conexiones lentas, PIN parental, historial, NSRPlay y extensiones.
 - **Sin Firebase, Room, Retrofit, Moshi ni KSP**: se retiraron dependencias que el código no usaba para reducir tamaño, arranque y tiempo de compilación.
@@ -109,10 +109,12 @@ El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en A
 ### Continuar viendo
 
 - El banner promocional se reemplazó por una **cuadrícula adaptativa** (1–5 columnas según el ancho) con los últimos 8 títulos del historial.
-- Cada tarjeta muestra carátula 16:9, tipo, progreso, porcentaje y tiempo restante.
-- Al pulsarla, el reproductor arranca en la **posición guardada**; no vuelve al inicio.
+- Mezcla el historial IPTV (con progreso y reanudación) y el historial NSRPlay (sin minuto, porque el reproductor web del proveedor no lo expone). Los títulos NSRPlay llevan la etiqueta cian `NSRPLAY` y al pulsarlos se abre su detalle para elegir servidor.
+- Cada tarjeta muestra carátula 16:9, tipo, progreso, porcentaje y tiempo restante cuando existe.
+- Al pulsar una tarjeta IPTV, el reproductor arranca en la **posición guardada**; no vuelve al inicio.
 - La posición se actualiza cada 500 ms en memoria y el historial se persiste cada 1,5 s para no castigar el almacenamiento en equipos de gama baja.
 - Al cambiar de canal/película dentro del reproductor también se reanuda el título si tenía progreso.
+- **Borrar historial** en Ajustes elimina tanto el historial IPTV como el de NSRPlay.
 
 ### Etiquetas de contenido visto
 
@@ -155,7 +157,7 @@ app/src/main/java/com/example/
 ## Verificación realizada
 
 - `:app:assembleDebug` compila y genera APK.
-- 19 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`, `NsrPlayConfigStoreTest`, `ExtensionEngineTest`, `WatchedContentTest`).
+- 20 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`, `NsrPlayConfigStoreTest`, `ExtensionEngineTest`, `WatchedContentTest`).
 - UI probada en 1920×1080 (tablet/TV), 1080×1920 a 420 dpi (teléfono vertical) y 1920×1080 a 420 dpi (teléfono horizontal): cabecera, botón de listas, diálogo de alta y reproductor web.
 - NSRPlay verificado en producción dentro de Películas (badges `NSRPLAY`) y en la búsqueda global.
 - Búsqueda por slug y por sugerencias verificada con “Chappie” y “saul” (encuentra “Better Call Saul” con póster y episodios).

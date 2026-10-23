@@ -42,25 +42,77 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.model.ItemType
 import com.example.data.model.WatchHistoryItem
+import com.example.data.nsrplay.NsrHistoryItem
+import com.example.data.nsrplay.NsrMediaType
+
+private data class CardEntry(
+    val key: String,
+    val title: String,
+    val posterUrl: String?,
+    val type: ItemType,
+    val progress: Float?,
+    val positionMs: Long,
+    val durationMs: Long,
+    val lastWatchedTimestamp: Long,
+    val nsr: NsrHistoryItem? = null,
+    val iptv: WatchHistoryItem? = null
+)
 
 /**
  * Compact, non-lazy grid for "Continuar viendo".
  *
- * The watch history is small (max 8 cards here), so laying out rows manually
- * avoids a nested LazyVerticalGrid inside the page LazyColumn. That keeps
- * scrolling fluid on low-end devices and lets the card width adapt to phones,
- * tablets and TV.
+ * IPTV entries keep their playback position. NSRPlay entries are included too
+ * (without a minute mark, because the provider's web player does not expose
+ * one); tapping them reopens their NSRPlay detail/server list.
+ *
+ * The history is small (max 8 cards here), so laying out rows manually avoids a
+ * nested LazyVerticalGrid inside the page LazyColumn. That keeps scrolling
+ * fluid on low-end devices and lets the card width adapt to phones, tablets
+ * and TV.
  */
 @Composable
 fun ContinueWatchingGrid(
-    history: List<WatchHistoryItem>,
+    iptvHistory: List<WatchHistoryItem>,
+    nsrHistory: List<NsrHistoryItem>,
     primaryColor: Color,
-    onPlay: (WatchHistoryItem) -> Unit,
+    onPlayIptv: (WatchHistoryItem) -> Unit,
+    onPlayNsr: (NsrHistoryItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val visible = remember(history) {
-        history.sortedByDescending { it.lastWatchedTimestamp }
-            .distinctBy { it.itemId }
+    val visible = remember(iptvHistory, nsrHistory) {
+        val merged = ArrayList<CardEntry>(iptvHistory.size + nsrHistory.size)
+        iptvHistory.forEach { entry ->
+            merged.add(
+                CardEntry(
+                    key = "iptv:${entry.itemId}",
+                    title = entry.title,
+                    posterUrl = entry.posterUrl,
+                    type = entry.type,
+                    progress = entry.progressPercent.coerceIn(0f, 1f),
+                    positionMs = entry.positionMs,
+                    durationMs = entry.durationMs,
+                    lastWatchedTimestamp = entry.lastWatchedTimestamp,
+                    iptv = entry
+                )
+            )
+        }
+        nsrHistory.forEach { entry ->
+            merged.add(
+                CardEntry(
+                    key = entry.watchKey,
+                    title = entry.title,
+                    posterUrl = entry.posterUrl,
+                    type = if (entry.type == NsrMediaType.SERIES) ItemType.SERIES else ItemType.MOVIE,
+                    progress = null,
+                    positionMs = 0L,
+                    durationMs = 0L,
+                    lastWatchedTimestamp = entry.lastWatchedTimestamp,
+                    nsr = entry
+                )
+            )
+        }
+        merged.sortedByDescending { it.lastWatchedTimestamp }
+            .distinctBy { it.key }
             .take(8)
     }
     if (visible.isEmpty()) return
@@ -104,7 +156,13 @@ fun ContinueWatchingGrid(
                         ContinueWatchingCard(
                             entry = entry,
                             primaryColor = primaryColor,
-                            onClick = { onPlay(entry) },
+                            onClick = {
+                                if (entry.nsr != null) {
+                                    onPlayNsr(entry.nsr)
+                                } else {
+                                    entry.iptv?.let(onPlayIptv)
+                                }
+                            },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -119,15 +177,16 @@ fun ContinueWatchingGrid(
 
 @Composable
 private fun ContinueWatchingCard(
-    entry: WatchHistoryItem,
+    entry: CardEntry,
     primaryColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val percent = entry.progressPercent.coerceIn(0f, 1f)
+    val percent = entry.progress?.coerceIn(0f, 1f)
     val remaining = (entry.durationMs - entry.positionMs).coerceAtLeast(0L)
+    val isNsr = entry.nsr != null
 
     Column(
         modifier = modifier
@@ -191,12 +250,12 @@ private fun ContinueWatchingCard(
                     .align(Alignment.TopStart)
                     .padding(7.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xCC000000))
+                    .background(if (isNsr) Color(0xFF00E5FF) else Color(0xCC000000))
                     .padding(horizontal = 5.dp, vertical = 2.dp)
             ) {
                 Text(
-                    text = if (entry.type == ItemType.SERIES) "SERIE" else "PELÍCULA",
-                    color = Color(0xFFB8C6D3),
+                    text = if (isNsr) "NSRPLAY" else if (entry.type == ItemType.SERIES) "SERIE" else "PELÍCULA",
+                    color = if (isNsr) Color.Black else Color(0xFFB8C6D3),
                     fontSize = 7.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -219,15 +278,17 @@ private fun ContinueWatchingCard(
                 )
             }
 
-            LinearProgressIndicator(
-                progress = { percent },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(3.dp),
-                color = primaryColor,
-                trackColor = Color(0x66000000)
-            )
+            if (percent != null) {
+                LinearProgressIndicator(
+                    progress = { percent },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(3.dp),
+                    color = primaryColor,
+                    trackColor = Color(0x66000000)
+                )
+            }
         }
 
         Text(
@@ -242,11 +303,13 @@ private fun ContinueWatchingCard(
 
         Text(
             text = when {
-                percent >= 0.99f -> "Terminado · toca para repetir"
-                entry.positionMs > 0L -> "${(percent * 100).toInt()}% · ${formatRemaining(remaining)} restantes"
+                isNsr -> "En NSRPlay · Toca para abrir"
+                percent != null && percent >= 0.99f -> "Terminado · toca para repetir"
+                entry.positionMs > 0L && percent != null ->
+                    "${(percent * 100).toInt()}% · ${formatRemaining(remaining)} restantes"
                 else -> "Empezar"
             },
-            color = Color(0xFF8F9DAA),
+            color = if (isNsr) Color(0xFF66D9E8) else Color(0xFF8F9DAA),
             fontSize = 9.sp,
             maxLines = 1,
             modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 1.dp, bottom = 7.dp)

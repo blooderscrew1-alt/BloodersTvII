@@ -42,8 +42,28 @@ class WatchedContentTest {
         assertTrue(repository.watchedNsr.value.contains("nsr:series:better-call-saul"))
         assertEquals("nsr:series:better-call-saul", item.watchKey())
 
+        assertEquals(1, repository.nsrHistory.value.size)
+        assertEquals("Better Call Saul", repository.nsrHistory.value.first().title)
+        assertEquals("nsr:series:better-call-saul", repository.nsrHistory.value.first().watchKey)
+
         repository.clearHistory()
         assertFalse(repository.isNsrWatched(item))
         assertTrue(repository.watchedNsr.value.isEmpty())
+        assertTrue(repository.nsrHistory.value.isEmpty())
+    }
+
+    @Test
+    fun `NSR history keeps the latest title once per key`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = IptvRepository(context)
+        repository.clearHistory()
+
+        val first = media().copy(title = "Better Call Saul")
+        val second = media().copy(title = "Better Call Saul (2015)")
+        repository.markNsrWatched(first)
+        repository.markNsrWatched(second)
+
+        assertEquals(1, repository.nsrHistory.value.size)
+        assertEquals("Better Call Saul (2015)", repository.nsrHistory.value.first().title)
     }
 }
