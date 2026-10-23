@@ -143,7 +143,7 @@ fun SeriesScreen(
     }
 
     val series = remember(allItems) {
-        allItems.filter { it.type == ItemType.SERIES }
+        allItems.filter { it.type == ItemType.SERIES && !it.isHidden }
     }
 
     val seriesHistory = remember(history) {

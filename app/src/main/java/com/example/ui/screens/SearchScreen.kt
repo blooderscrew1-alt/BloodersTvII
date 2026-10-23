@@ -283,6 +283,7 @@ fun SearchScreen(
         if (query.isBlank()) emptyList()
         else {
             allItems.filter { item ->
+                if (item.isHidden) return@filter false
                 val matchesQuery = item.name.contains(query, ignoreCase = true) ||
                         item.category.contains(query, ignoreCase = true)
 

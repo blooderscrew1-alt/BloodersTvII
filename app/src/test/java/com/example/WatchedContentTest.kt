@@ -55,6 +55,39 @@ class WatchedContentTest {
     }
 
     @Test
+    fun `playlist editor reclassifies hides and renames categories`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = IptvRepository(context)
+        val source = com.example.data.model.PlaylistSource(
+            id = "editor-test",
+            name = "Editor test",
+            type = com.example.data.model.SourceType.M3U_TEXT
+        )
+        repository.addPlaylistItems(
+            source,
+            listOf(
+                PlaylistItem(
+                    id = "editor-item",
+                    name = "Canal de prueba",
+                    streamUrl = "https://example.com/stream.m3u8",
+                    category = "Cine",
+                    type = ItemType.LIVE,
+                    sourceId = source.id
+                )
+            )
+        )
+
+        repository.setCategoryType(source.id, "Cine", ItemType.MOVIE)
+        repository.setCategoryHidden(source.id, "Cine", true)
+        repository.renameCategory(source.id, "Cine", "Películas")
+
+        val item = repository.items.value.first { it.id == "editor-item" }
+        assertEquals(ItemType.MOVIE, item.type)
+        assertEquals(true, item.isHidden)
+        assertEquals("Películas", item.category)
+    }
+
+    @Test
     fun `last live TV channel is persisted`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = IptvRepository(context)

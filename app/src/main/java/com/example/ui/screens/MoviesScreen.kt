@@ -137,7 +137,7 @@ fun MoviesScreen(
     }
 
     val movies = remember(allItems) {
-        allItems.filter { it.type == ItemType.MOVIE }
+        allItems.filter { it.type == ItemType.MOVIE && !it.isHidden }
     }
 
     val movieHistory = remember(history) {

@@ -86,7 +86,7 @@ fun TelevisionScreen(
 
     // Available categories in live TV
     val liveItems = remember(allItems) {
-        allItems.filter { it.type == ItemType.LIVE }
+        allItems.filter { it.type == ItemType.LIVE && !it.isHidden }
     }
 
     if (!isContentLoaded) {

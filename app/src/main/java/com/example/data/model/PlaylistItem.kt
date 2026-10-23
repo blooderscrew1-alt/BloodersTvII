@@ -22,7 +22,8 @@ data class PlaylistItem(
     val isLocked: Boolean = false,
     val overview: String? = null,
     val durationMs: Long = 0L,
-    val sourceId: String = "default"
+    val sourceId: String = "default",
+    val isHidden: Boolean = false
 )
 
 enum class SourceType {

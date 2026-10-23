@@ -25,9 +25,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.Icons
+import android.widget.Toast
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Dns
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PlaylistPlay
@@ -57,8 +60,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -72,6 +77,7 @@ import com.example.data.parser.XtreamCodesClient
 import com.example.data.repository.IptvRepository
 import com.example.ui.components.AdaptiveDialogFrame
 import com.example.ui.components.CategoryFilterDialog
+import com.example.ui.components.PlaylistEditorDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -85,6 +91,7 @@ fun PlaylistsScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
     val playlists by repository.playlists.collectAsState()
     val isContentLoaded by repository.isContentLoaded.collectAsState()
     val scope = rememberCoroutineScope()
@@ -92,6 +99,7 @@ fun PlaylistsScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var detectedCategories by remember { mutableStateOf<List<CategoryInfo>?>(null) }
     var pendingPlaylistData by remember { mutableStateOf<Pair<PlaylistSource, String>?>(null) }
+    var editingPlaylist by remember { mutableStateOf<PlaylistSource?>(null) }
     var isAnalyzingList by remember { mutableStateOf(false) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
 
@@ -405,7 +413,10 @@ fun PlaylistsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
                             Box(
                                 modifier = Modifier
                                     .size(42.dp)
@@ -442,19 +453,54 @@ fun PlaylistsScreen(
                             }
                         }
 
-                        IconButton(
-                            onClick = { repository.removePlaylist(playlist.id) }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Eliminar lista",
-                                tint = Color(0xFFFF5252)
-                            )
+                        Row {
+                            IconButton(onClick = { editingPlaylist = playlist }) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Editar lista",
+                                    tint = primaryColor
+                                )
+                            }
+                            IconButton(
+                                onClick = {
+                                    val link = repository.playlistLink(playlist)
+                                    if (link.isNotBlank()) {
+                                        clipboard.setText(AnnotatedString(link))
+                                        Toast.makeText(context, "Enlace copiado", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Esta lista no tiene enlace", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ContentCopy,
+                                    contentDescription = "Copiar enlace",
+                                    tint = Color(0xFF8F9DAA)
+                                )
+                            }
+                            IconButton(
+                                onClick = { repository.removePlaylist(playlist.id) }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Eliminar lista",
+                                    tint = Color(0xFFFF5252)
+                                )
+                            }
                         }
                     }
                 }
             }
         }
+    }
+
+    editingPlaylist?.let { playlist ->
+        PlaylistEditorDialog(
+            source = playlist,
+            repository = repository,
+            primaryColor = primaryColor,
+            onDismiss = { editingPlaylist = null }
+        )
     }
 }
 

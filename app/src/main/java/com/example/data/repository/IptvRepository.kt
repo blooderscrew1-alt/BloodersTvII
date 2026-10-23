@@ -24,7 +24,9 @@ import com.example.data.unlimplay.UnlimplayMedia
 import com.example.data.unlimplay.UnlimplayType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +40,7 @@ class IptvRepository(private val context: Context) {
 
     private val prefs: SharedPreferences = context.getSharedPreferences("blooders_tv_prefs", Context.MODE_PRIVATE)
     private val repoScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var channelPersistJob: Job? = null
 
     private val _items = MutableStateFlow<List<PlaylistItem>>(emptyList())
     val items: StateFlow<List<PlaylistItem>> = _items.asStateFlow()
@@ -409,6 +412,7 @@ class IptvRepository(private val context: Context) {
                         var overview: String? = null
                         var durationMs = 0L
                         var sourceId = "user"
+                        var isHidden = false
 
                         while (reader.hasNext()) {
                             val key = reader.nextName()
@@ -458,6 +462,7 @@ class IptvRepository(private val context: Context) {
                                 }
                                 "durationMs" -> durationMs = reader.nextLong()
                                 "sourceId" -> sourceId = reader.nextString()
+                                "isHidden" -> isHidden = reader.nextBoolean()
                                 else -> reader.skipValue()
                             }
                         }
@@ -479,7 +484,8 @@ class IptvRepository(private val context: Context) {
                                     isLocked = _lockedCategories.value.contains(category),
                                     overview = overview,
                                     durationMs = durationMs,
-                                    sourceId = sourceId
+                                    sourceId = sourceId,
+                                    isHidden = isHidden
                                 )
                             )
                         }
@@ -542,6 +548,7 @@ class IptvRepository(private val context: Context) {
                     if (ch.overview != null) jsonWriter.name("overview").value(ch.overview) else jsonWriter.name("overview").nullValue()
                     jsonWriter.name("durationMs").value(ch.durationMs)
                     jsonWriter.name("sourceId").value(ch.sourceId)
+                    jsonWriter.name("isHidden").value(ch.isHidden)
                     jsonWriter.endObject()
                 }
                 jsonWriter.endArray()
@@ -581,6 +588,89 @@ class IptvRepository(private val context: Context) {
 
         repoScope.launch {
             persistPlaylistsToDisk()
+            persistChannelsToDisk()
+        }
+    }
+
+    fun renamePlaylist(sourceId: String, newName: String) {
+        val clean = newName.trim()
+        if (clean.isBlank()) return
+        _playlists.value = _playlists.value.map {
+            if (it.id == sourceId) it.copy(name = clean) else it
+        }
+        repoScope.launch { persistPlaylistsToDisk() }
+    }
+
+    fun setPlaylistItemsType(sourceId: String, type: ItemType) {
+        var changed = false
+        _items.value = _items.value.map { item ->
+            if (item.sourceId == sourceId && item.type != type) {
+                changed = true
+                item.copy(type = type)
+            } else {
+                item
+            }
+        }
+        if (changed) persistChannelsDebounced()
+    }
+
+    fun setCategoryType(sourceId: String, category: String, type: ItemType) {
+        var changed = false
+        _items.value = _items.value.map { item ->
+            if (item.sourceId == sourceId && item.category == category && item.type != type) {
+                changed = true
+                item.copy(type = type)
+            } else {
+                item
+            }
+        }
+        if (changed) persistChannelsDebounced()
+    }
+
+    fun setCategoryHidden(sourceId: String, category: String, hidden: Boolean) {
+        var changed = false
+        _items.value = _items.value.map { item ->
+            if (item.sourceId == sourceId && item.category == category && item.isHidden != hidden) {
+                changed = true
+                item.copy(isHidden = hidden)
+            } else {
+                item
+            }
+        }
+        if (changed) persistChannelsDebounced()
+    }
+
+    fun renameCategory(sourceId: String, oldName: String, newName: String) {
+        val clean = newName.trim()
+        if (clean.isBlank() || clean == oldName) return
+        var changed = false
+        _items.value = _items.value.map { item ->
+            if (item.sourceId == sourceId && item.category == oldName) {
+                changed = true
+                item.copy(category = clean)
+            } else {
+                item
+            }
+        }
+        if (changed) persistChannelsDebounced()
+    }
+
+    fun playlistLink(source: PlaylistSource): String {
+        return when (source.type) {
+            SourceType.XTREAM -> {
+                val base = source.url.trimEnd('/')
+                val user = java.net.URLEncoder.encode(source.username, "UTF-8")
+                val pass = java.net.URLEncoder.encode(source.password, "UTF-8")
+                "$base/get.php?username=$user&password=$pass&type=m3u_plus&output=ts"
+            }
+            else -> source.url
+        }
+    }
+
+    private fun persistChannelsDebounced() {
+        channelPersistJob?.cancel()
+        channelPersistJob = repoScope.launch {
+            delay(350)
             persistChannelsToDisk()
         }
     }
