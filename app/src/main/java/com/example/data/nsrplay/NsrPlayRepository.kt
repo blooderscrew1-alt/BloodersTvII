@@ -1,6 +1,7 @@
 package com.example.data.nsrplay
 
 import android.content.Context
+import android.net.Uri
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -29,6 +30,13 @@ class NsrPlayRepository(context: Context) {
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(35, TimeUnit.SECONDS)
         .callTimeout(45, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
+        .build()
+
+    private val imdbClient = OkHttpClient.Builder()
+        .connectTimeout(8, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
+        .callTimeout(12, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .build()
 
@@ -87,6 +95,28 @@ class NsrPlayRepository(context: Context) {
             NsrMediaType.SERIES -> listOf(NsrMediaType.SERIES)
             null -> listOf(NsrMediaType.MOVIE, NsrMediaType.SERIES)
         }
+
+        // 1) IMDb suggestions turn a partial query ("saul") into full titles
+        //    ("Better Call Saul") that NSRPlay can resolve by slug.
+        val imdbResults = mutableListOf<NsrMedia>()
+        for (suggestion in fetchImdbSuggestions(cleanQuery, preferredType).take(3)) {
+            val info = tryInfo(slugFromTitle(suggestion.title), suggestion.type) ?: continue
+            if (!titleMatchesQuery(info.title, cleanQuery)) continue
+            imdbResults.add(
+                info.copy(
+                    poster = info.poster?.takeIf { it.isNotBlank() } ?: suggestion.poster,
+                    year = info.year ?: suggestion.year
+                )
+            )
+            if (imdbResults.size >= 5) break
+        }
+        if (imdbResults.isNotEmpty()) {
+            val result = imdbResults.distinctBy { it.type.apiValue + ":" + it.slug }.take(30)
+            cacheSearch(cacheKey, result)
+            return result
+        }
+
+        // 2) Try the query itself as a provider slug ("chappie" -> /info/chappie).
         val slugResults = mutableListOf<NsrMedia>()
         for (slug in slugCandidates(cleanQuery)) {
             for (type in types) {
@@ -103,7 +133,7 @@ class NsrPlayRepository(context: Context) {
             return result
         }
 
-        // 2) Official search endpoint.
+        // 3) Official search endpoint.
         val direct = try {
             search(cleanQuery)
         } catch (_: Throwable) {
@@ -115,7 +145,7 @@ class NsrPlayRepository(context: Context) {
             return result
         }
 
-        // 3) Last resort: first catalog page of movies + series.
+        // 4) Last resort: first catalog page of movies + series.
         val movies = getCatalog(NsrMediaType.MOVIE, page = 1).items
         val series = getCatalog(NsrMediaType.SERIES, page = 1).items
         val catalogResults = movies + series
@@ -128,6 +158,62 @@ class NsrPlayRepository(context: Context) {
         cacheSearch(cacheKey, result)
         return result
     }
+
+    private suspend fun fetchImdbSuggestions(
+        query: String,
+        preferredType: NsrMediaType?
+    ): List<ImdbSuggestion> = withContext(Dispatchers.IO) {
+        val url = "https://v3.sg.media-imdb.com/suggestion/x/" +
+            Uri.encode(query.trim().lowercase(Locale.ROOT)) + ".json"
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36")
+            .build()
+
+        try {
+            imdbClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext emptyList()
+                val body = response.body?.string().orEmpty()
+                val json = JSONObject(body)
+                val data = json.optJSONArray("d") ?: return@withContext emptyList()
+                val result = ArrayList<ImdbSuggestion>()
+
+                for (i in 0 until data.length()) {
+                    val obj = data.optJSONObject(i) ?: continue
+                    val qid = obj.optString("qid")
+                    val type = when (qid) {
+                        "movie", "tvMovie" -> NsrMediaType.MOVIE
+                        "tvSeries", "tvMiniSeries", "tvShort", "tvSpecial" ->
+                            NsrMediaType.SERIES
+                        else -> null
+                    } ?: continue
+                    if (preferredType != null && type != preferredType) continue
+
+                    val title = obj.optString("l").trim()
+                    if (title.isBlank()) continue
+                    val poster = obj.optJSONObject("i")
+                        ?.optString("imageUrl")
+                        ?.takeIf { it.isNotBlank() }
+                    val year = obj.optString("y").takeIf { it.isNotBlank() && it != "null" }
+
+                    result.add(ImdbSuggestion(title, year, poster, type))
+                    if (result.size >= 5) break
+                }
+                return@withContext result
+            }
+        } catch (_: Throwable) {
+            emptyList()
+        }
+    }
+
+    private fun slugFromTitle(title: String): String = normalizeSlug(cleanTitle(title))
+
+    private data class ImdbSuggestion(
+        val title: String,
+        val year: String?,
+        val poster: String?,
+        val type: NsrMediaType
+    )
 
     private fun cachedSearch(key: String): List<NsrMedia>? {
         val entry = searchCache[key] ?: return null
@@ -377,6 +463,9 @@ class NsrPlayRepository(context: Context) {
                             NsrEpisode(
                                 number = ep.optInt("number", e + 1),
                                 title = fixMojibake(ep.optString("title"))
+                                    .replace('\n', ' ')
+                                    .replace(Regex("\\s+"), " ")
+                                    .trim()
                                     .ifBlank { "Episodio ${e + 1}" },
                                 season = ep.optInt("season", number)
                             )
