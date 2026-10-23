@@ -113,8 +113,14 @@ fun NsrPlayDetailScreen(
     primaryColor: Color,
     onBack: () -> Unit
 ) {
-    var detail by remember(media.slug) { mutableStateOf<NsrMedia?>(null) }
-    var isLoading by remember(media.slug) { mutableStateOf(true) }
+    // Results that came from /content/info already bring their servers or
+    // seasons. Show them immediately instead of making the user wait for the
+    // same request a second time.
+    val hasLoadedDetail = media.servers.isNotEmpty() || media.seasons.isNotEmpty()
+    var detail by remember(media.slug) {
+        mutableStateOf(if (hasLoadedDetail) media else null)
+    }
+    var isLoading by remember(media.slug) { mutableStateOf(!hasLoadedDetail) }
     var error by remember(media.slug) { mutableStateOf<String?>(null) }
     var reloadTick by remember { mutableIntStateOf(0) }
 
@@ -130,6 +136,10 @@ fun NsrPlayDetailScreen(
     BackHandler { onBack() }
 
     LaunchedEffect(media.slug, media.type, reloadTick) {
+        if (reloadTick == 0 && hasLoadedDetail) {
+            selectedSeasonNumber = media.seasons.firstOrNull()?.number ?: 1
+            return@LaunchedEffect
+        }
         isLoading = true
         error = null
         try {

@@ -107,7 +107,14 @@ fun SearchScreen(
 
         scope.launch {
             try {
-                val result = nsrRepository.searchWithCatalogFallback(cleanQuery)
+                val result = nsrRepository.searchWithCatalogFallback(
+                    query = cleanQuery,
+                    preferredType = when (selectedFilter) {
+                        "Películas" -> NsrMediaType.MOVIE
+                        "Series" -> NsrMediaType.SERIES
+                        else -> null
+                    }
+                )
                 if (nsrSubmittedQuery == cleanQuery) {
                     nsrResults = result
                     nsrError = null
@@ -377,7 +384,7 @@ fun SearchScreen(
                         textAlign = TextAlign.Center
                     )
 
-                    if (!showNsr && selectedFilter != "Canales" && query.trim().length >= 2) {
+                    if (selectedFilter != "Canales" && query.trim().length >= 2) {
                         Spacer(modifier = Modifier.height(14.dp))
                         Button(
                             onClick = { submitNsrSearch() },
@@ -387,7 +394,15 @@ fun SearchScreen(
                             ),
                             shape = RoundedCornerShape(8.dp)
                         ) {
-                            Text("Buscar también en NSRPlay", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = if (showNsr) {
+                                    "Reintentar búsqueda en NSRPlay"
+                                } else {
+                                    "Buscar también en NSRPlay"
+                                },
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }

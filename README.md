@@ -93,7 +93,9 @@ El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en A
 
 - Sin pestaña NSRPlay: sus títulos se muestran dentro de **Películas**, **Series** y la **búsqueda global**, con insignia `NSRPLAY` en cada tarjeta.
 - Caché en memoria de 5 minutos para el catálogo (compartida entre pestañas) y carga de más títulos bajo demanda; así cambiar de pestaña no vuelve a pedir el catálogo ni muestra un spinner innecesario.
-- Búsqueda global unificada: resultados de IPTV y NSRPlay en la misma lista. La lupa/Enter consulta NSRPlay; si su endpoint de búsqueda devuelve vacío, se buscan coincidencias en el catálogo en memoria.
+- Búsqueda global unificada: resultados de IPTV y NSRPlay en la misma lista. La búsqueda local sigue siendo instantánea; NSRPlay se consulta al pulsar la **lupa** o **Enter** (así respetamos su límite de 5 búsquedas/minuto).
+- Cuando el endpoint de búsqueda de NSRPlay devuelve vacío, la app prueba el slug del título en `/content/info` (por ejemplo `chappie` o `breaking-bad`) y, si tampoco hay resultado, busca en la primera página del catálogo. Así se encuentran títulos que el buscador de NSRPlay no devuelve.
+- Caché de búsquedas de 5 minutos: repetir la misma consulta es instantáneo.
 - Pestañas **General / NSRPlay** en Ajustes: clave, URL, guardar, probar conexión y restablecer sin tocar el código.
 - Cliente HTTP propio y liviano (`NsrPlayRepository`) con mensajes de error claros para 401/404/429/5xx.
 - Detalle de película/serie y selector de servidores por episodio.
@@ -116,6 +118,7 @@ app/src/main/java/com/example/
 - 13 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`, `NsrPlayConfigStoreTest`).
 - UI probada en 1920×1080 (tablet/TV), 1080×1920 a 420 dpi (teléfono vertical) y 1920×1080 a 420 dpi (teléfono horizontal): cabecera, botón de listas, diálogo de alta y reproductor web.
 - NSRPlay verificado en producción dentro de Películas (badges `NSRPLAY`) y en la búsqueda global.
+- Búsqueda por slug verificada con “Chappie” (el buscador de NSRPlay devolvía vacío) y detalle con servidores sin una segunda espera.
 - La configuración NSRPlay se probó de extremo a extremo: URL de mock, "Probar conexión" (respuesta real), guardado y apertura del catálogo con esa configuración.
 
 ## Aviso

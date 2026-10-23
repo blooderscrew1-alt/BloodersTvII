@@ -1,6 +1,7 @@
 package com.example.data.nsrplay
 
 import android.content.Context
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -8,6 +9,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
+import java.text.Normalizer
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -61,30 +63,133 @@ class NsrPlayRepository(context: Context) {
     }
 
     /**
-     * Some NSRPlay searches come back empty even when the title is in the
-     * catalog. If the endpoint returns nothing, look through the first catalog
-     * page of movies and series so the unified search still finds known titles.
-     * The extra calls only happen on an empty response.
+     * NSRPlay's /content/search currently returns an empty list for many valid
+     * titles. Their /content/info endpoint does work when it receives the slug,
+     * so a title search first tries the slug directly (movie and series in
+     * parallel), then the official search, and finally the loaded catalog.
      */
-    suspend fun searchWithCatalogFallback(query: String): List<NsrMedia> {
-        val cleanQuery = query.trim()
+    suspend fun searchWithCatalogFallback(
+        query: String,
+        preferredType: NsrMediaType? = null
+    ): List<NsrMedia> {
+        val cleanQuery = cleanTitle(query).trim()
         if (cleanQuery.isBlank()) return emptyList()
 
+        val cacheKey = configFingerprint() +
+            "|${preferredType?.apiValue ?: "all"}:${cleanQuery.lowercase(Locale.ROOT)}"
+        cachedSearch(cacheKey)?.let { return it }
+
+        // 1) Try the title as a provider slug. "Chappie" -> /info/chappie.
+        //    Sequential and filtered by the active tab: a movie query does not
+        //    wait for a slow series lookup, and vice versa.
+        val types = when (preferredType) {
+            NsrMediaType.MOVIE -> listOf(NsrMediaType.MOVIE)
+            NsrMediaType.SERIES -> listOf(NsrMediaType.SERIES)
+            null -> listOf(NsrMediaType.MOVIE, NsrMediaType.SERIES)
+        }
+        val slugResults = mutableListOf<NsrMedia>()
+        for (slug in slugCandidates(cleanQuery)) {
+            for (type in types) {
+                val info = tryInfo(slug, type)
+                if (info != null && titleMatchesQuery(info.title, cleanQuery)) {
+                    slugResults.add(info)
+                }
+            }
+            if (slugResults.isNotEmpty()) break
+        }
+        if (slugResults.isNotEmpty()) {
+            val result = slugResults.distinctBy { it.type.apiValue + ":" + it.slug }.take(30)
+            cacheSearch(cacheKey, result)
+            return result
+        }
+
+        // 2) Official search endpoint.
         val direct = try {
             search(cleanQuery)
         } catch (_: Throwable) {
             emptyList()
         }
-        if (direct.isNotEmpty()) return direct
+        if (direct.isNotEmpty()) {
+            val result = if (preferredType == null) direct else direct.filter { it.type == preferredType }
+            cacheSearch(cacheKey, result)
+            return result
+        }
 
+        // 3) Last resort: first catalog page of movies + series.
         val movies = getCatalog(NsrMediaType.MOVIE, page = 1).items
         val series = getCatalog(NsrMediaType.SERIES, page = 1).items
         val catalogResults = movies + series
 
-        return catalogResults
+        val result = catalogResults
             .filter { it.title.contains(cleanQuery, ignoreCase = true) }
+            .filter { preferredType == null || it.type == preferredType }
             .distinctBy { it.type.apiValue + ":" + it.slug }
             .take(30)
+        cacheSearch(cacheKey, result)
+        return result
+    }
+
+    private fun cachedSearch(key: String): List<NsrMedia>? {
+        val entry = searchCache[key] ?: return null
+        if (System.currentTimeMillis() - entry.first > SEARCH_CACHE_TTL_MS) {
+            searchCache.remove(key)
+            return null
+        }
+        return entry.second
+    }
+
+    private fun cacheSearch(key: String, results: List<NsrMedia>) {
+        // Never cache an empty result: a transient provider failure must not
+        // make the same search look "dead" for five minutes.
+        if (results.isEmpty()) return
+        if (searchCache.size > 40) searchCache.clear()
+        searchCache[key] = System.currentTimeMillis() to results
+    }
+
+    private suspend fun tryInfo(slug: String, type: NsrMediaType): NsrMedia? {
+        return try {
+            getInfo(slug, type)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    private fun titleMatchesQuery(title: String, query: String): Boolean {
+        val normalizedTitle = normalizeSlug(title).replace("-", "")
+        val normalizedQuery = normalizeSlug(query).replace("-", "")
+        if (normalizedTitle.isBlank() || normalizedQuery.isBlank()) return false
+        return normalizedTitle.contains(normalizedQuery) ||
+            normalizedQuery.contains(normalizedTitle)
+    }
+
+    private fun slugCandidates(query: String): List<String> {
+        val candidates = linkedSetOf<String>()
+
+        fun add(value: String) {
+            val slug = normalizeSlug(value)
+            if (slug.length >= 2) candidates.add(slug)
+        }
+
+        add(query)
+        // Drop a trailing year: "chappie 2015" -> "chappie".
+        add(query.replace(Regex("\\b(19|20)\\d{2}\\b"), " "))
+        // English/Spanish articles often omitted from provider slugs.
+        add(query.replace(Regex("(?i)^(the|el|la|los|las)\\s+"), " "))
+        // A common separator variant: "spider man" -> "spider-man".
+        add(query.replace(" ", "-"))
+
+        return candidates.take(4).toList()
+    }
+
+    private fun normalizeSlug(value: String): String {
+        val withoutAccents = Normalizer.normalize(value, Normalizer.Form.NFD)
+            .replace(Regex("\\p{M}+"), "")
+        return withoutAccents
+            .lowercase(Locale.ROOT)
+            .replace(Regex("[^a-z0-9]+"), "-")
+            .trim('-')
     }
 
     suspend fun getInfo(slug: String, type: NsrMediaType): NsrMedia = withContext(Dispatchers.IO) {
@@ -328,6 +433,12 @@ class NsrPlayRepository(context: Context) {
     }
 
     companion object {
+        private const val SEARCH_CACHE_TTL_MS = 5 * 60 * 1000L
+        private val searchCache =
+            java.util.Collections.synchronizedMap(
+                mutableMapOf<String, Pair<Long, List<NsrMedia>>>()
+            )
+
         private val TITLE_PREFIX = Regex("(?i)^\\s*ver\\s+")
         private val TITLE_SUFFIXES = listOf(
             Regex("(?i)\\s+online\\s+gratis\\s+hd\\s*$"),
