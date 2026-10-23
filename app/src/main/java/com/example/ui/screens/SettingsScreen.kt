@@ -98,7 +98,7 @@ fun SettingsScreen(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "Streaming, control parental, apariencia y proveedor NSRPlay.",
+                text = "Streaming, control parental, apariencia, NSRPlay y extensiones.",
                 color = Color(0xFF8F9DAA),
                 fontSize = 12.sp
             )
@@ -394,8 +394,13 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(8.dp))
         }
                 }
-            } else {
+            } else if (selectedSection == 1) {
                 NsrPlaySettingsContent(
+                    primaryColor = primaryColor,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                ExtensionsSettingsContent(
                     primaryColor = primaryColor,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -418,7 +423,7 @@ private fun SettingsSectionTabs(
             .background(Color(0xFF101A24))
             .padding(3.dp)
     ) {
-        listOf("General", "NSRPlay").forEachIndexed { index, label ->
+        listOf("General", "NSRPlay", "Extensiones").forEachIndexed { index, label ->
             val isSelected = selected == index
             Box(
                 modifier = Modifier
@@ -427,7 +432,13 @@ private fun SettingsSectionTabs(
                     .background(if (isSelected) primaryColor else Color.Transparent)
                     .clickable { onSelect(index) }
                     .padding(vertical = 8.dp)
-                    .testTag(if (index == 0) "settings_tab_general" else "settings_tab_nsrplay"),
+                    .testTag(
+                        when (index) {
+                            0 -> "settings_tab_general"
+                            1 -> "settings_tab_nsrplay"
+                            else -> "settings_tab_extensions"
+                        }
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Text(

@@ -75,6 +75,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.example.extensions.ExtensionEngine
+import com.example.extensions.ExtensionNetworkFilter
+import com.example.extensions.WebExtension
 import com.example.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.delay
 
@@ -100,6 +103,8 @@ class PlayerWebActivity : ComponentActivity() {
     }
 
     private lateinit var webView: WebView
+    private lateinit var extensionNetworkFilter: ExtensionNetworkFilter
+    private var extensions: List<WebExtension> = emptyList()
     private var startUrl: String = ""
     private var referer: String = DEFAULT_REFERER
     private var customView: View? = null
@@ -125,6 +130,9 @@ class PlayerWebActivity : ComponentActivity() {
         referer = intent.getStringExtra(EXTRA_REFERER).orEmpty().ifBlank { DEFAULT_REFERER }
         pageTitle = intent.getStringExtra(EXTRA_TITLE).orEmpty()
         desktopMode = isTelevisionOrLargeScreen()
+
+        extensions = ExtensionEngine.loadExtensions(applicationContext)
+        extensionNetworkFilter = ExtensionNetworkFilter(extensions)
 
         webView = WebView(this)
         configureWebView()
@@ -205,7 +213,9 @@ class PlayerWebActivity : ComponentActivity() {
                 request: WebResourceRequest?
             ): WebResourceResponse? {
                 val url = request?.url?.toString() ?: return null
-                if (PlayerAdBlocker.isAdUrl(url)) {
+                val blockedByExtension = request?.isForMainFrame == false &&
+                    extensionNetworkFilter.shouldBlock(url)
+                if (PlayerAdBlocker.isAdUrl(url) || blockedByExtension) {
                     return WebResourceResponse(
                         "text/plain",
                         "UTF-8",
@@ -225,6 +235,18 @@ class PlayerWebActivity : ComponentActivity() {
                     return true
                 }
                 if (PlayerAdBlocker.isAdUrl(url)) return true
+                if (extensionNetworkFilter.shouldBlock(url)) return true
+
+                // Extension redirect rules apply to top-level navigations.
+                val redirect = extensionNetworkFilter.redirectFor(url)
+                if (redirect != null && redirect != url) {
+                    view?.loadUrl(redirect)
+                    return true
+                }
+                if (extensionNetworkFilter.shouldUpgradeToHttps(url)) {
+                    view?.loadUrl(url.replaceFirst("http://", "https://"))
+                    return true
+                }
                 return false
             }
 
@@ -233,6 +255,16 @@ class PlayerWebActivity : ComponentActivity() {
                 isLoading = true
                 loadProgress = 5
                 errorMessage = null
+            }
+
+            override fun onPageCommitVisible(view: WebView?, url: String?) {
+                super.onPageCommitVisible(view, url)
+                if (url != null) {
+                    val extensionScript = ExtensionEngine.generateInjectionScript(extensions, url)
+                    if (extensionScript.isNotBlank()) {
+                        view?.evaluateJavascript(extensionScript, null)
+                    }
+                }
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -244,6 +276,12 @@ class PlayerWebActivity : ComponentActivity() {
                     PlayerAdBlocker.playbackSpeedScript(playbackSpeed),
                     null
                 )
+                if (url != null) {
+                    val extensionScript = ExtensionEngine.generateInjectionScript(extensions, url)
+                    if (extensionScript.isNotBlank()) {
+                        view?.evaluateJavascript(extensionScript, null)
+                    }
+                }
                 val title = view?.title
                 if (!title.isNullOrBlank() && !title.startsWith("http")) {
                     pageTitle = title

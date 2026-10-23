@@ -13,7 +13,8 @@ Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propia
   - detalle con sinopsis, servidores y, en series, temporadas/episodios;
   - cada servidor abre el **reproductor web unificado** basado en Serchwebview.
 - **Reproductor web** (`PlayerWebActivity`): WebView con bloqueo de anuncios y pop-ups, pantalla completa HTML5, control de velocidad, modo escritorio, Picture-in-Picture y pantalla siempre encendida.
-- **Ajustes**: tema, caché/buffer para conexiones lentas, PIN parental e historial.
+- **Extensiones Chrome/Edge** en el reproductor: paquetes `.zip` o `.crx` con content scripts (JS/CSS), background/service worker y reglas estáticas `declarativeNetRequest` (block, redirect, upgradeScheme). Se gestionan desde **Ajustes → Extensiones**.
+- **Ajustes**: tema, caché/buffer para conexiones lentas, PIN parental, historial, NSRPlay y extensiones.
 - **Sin Firebase, Room, Retrofit, Moshi ni KSP**: se retiraron dependencias que el código no usaba para reducir tamaño, arranque y tiempo de compilación.
 
 ## Configurar NSRPlay
@@ -62,6 +63,20 @@ Los endpoints usados son:
 
 El reproductor abre el `embedUrl` del servidor elegido. La app no resuelve ni almacena enlaces de video, y no guarda el catálogo en disco, respetando los términos de NSRPlay.
 
+## Extensiones del reproductor
+
+Abre **Ajustes → Extensiones** y pulsa **Instalar extensión desde archivo**. Se aceptan paquetes `.zip` y `.crx` que contengan `manifest.json`.
+
+Soporte actual:
+
+- `content_scripts` con JS y CSS y patrones `matches`;
+- `background.scripts` (MV2) y `background.service_worker` (MV3), inyectados como scripts de página;
+- reglas estáticas de `declarative_net_request` (`block`, `redirect`, `upgradeScheme`);
+- bloqueo de dominios publicitarios y redirecciones, más el guard de `window.open`/pop-ups del reproductor;
+- extensiones integradas: uBlock Video Shield, Anti-Popup y Redirecciones, SponsorBlock, Dark Reader, Video Speed Controller y Force PiP.
+
+Limitaciones: no hay acceso a Chrome Web Store dentro de la app, no se ejecuta un runtime completo de Chrome (algunas APIs `chrome.*`, reglas dinámicas y el bloqueo `webRequest` de MV2 no están disponibles) y los recursos binarios de las extensiones no se sirven. El bloqueo de red funciona con reglas estáticas `declarativeNetRequest` (MV3) y con el filtro de dominios propio de la app. Para instalar, descarga el paquete `.zip`/`.crx` en el dispositivo y selecciónalo desde el selector de archivos.
+
 ## Compilar
 
 Requisitos: JDK 17+ y Android SDK con `platforms;android-36` y `build-tools;36.0.0`.
@@ -89,6 +104,14 @@ El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en A
 - Hero banner con altura proporcional al ancho (170–320 dp) en lugar de 230 dp fijos.
 - Campos de búsqueda con ancho máximo en pantallas grandes.
 
+### Extensiones Chrome/Edge
+
+- Pestaña **Extensiones** en Ajustes: instalar `.zip`/`.crx`, activar/desactivar y eliminar.
+- Lector de paquetes con soporte de `manifest.json` en raíz o subcarpeta y cabecera CRX2/CRX3.
+- Motor de content scripts + shim de `chrome.runtime`, `chrome.storage`, `GM_addStyle`, `GM_setValue` y `GM_getValue`.
+- Filtro de red a partir de reglas `declarativeNetRequest`: dominios, `urlFilter`, `regexFilter`, block/allow/redirect/upgradeScheme.
+- Inyección al confirmar la página (`onPageCommitVisible`) y al terminar, con guard para no ejecutar dos veces.
+
 ### NSRPlay + Serchwebview
 
 - Sin pestaña NSRPlay: sus títulos se muestran dentro de **Películas**, **Series** y la **búsqueda global**, con insignia `NSRPLAY` en cada tarjeta.
@@ -115,7 +138,7 @@ app/src/main/java/com/example/
 ## Verificación realizada
 
 - `:app:assembleDebug` compila y genera APK.
-- 13 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`, `NsrPlayConfigStoreTest`).
+- 18 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`, `NsrPlayConfigStoreTest`, `ExtensionEngineTest`).
 - UI probada en 1920×1080 (tablet/TV), 1080×1920 a 420 dpi (teléfono vertical) y 1920×1080 a 420 dpi (teléfono horizontal): cabecera, botón de listas, diálogo de alta y reproductor web.
 - NSRPlay verificado en producción dentro de Películas (badges `NSRPLAY`) y en la búsqueda global.
 - Búsqueda por slug y por sugerencias verificada con “Chappie” y “saul” (encuentra “Better Call Saul” con póster y episodios).
