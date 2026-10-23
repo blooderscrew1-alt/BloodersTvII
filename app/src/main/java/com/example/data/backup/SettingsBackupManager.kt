@@ -10,6 +10,7 @@ import com.example.data.parser.IptvDownloader
 import com.example.data.parser.M3uParser
 import com.example.data.parser.XtreamCodesClient
 import com.example.data.repository.IptvRepository
+import com.example.data.unlimplay.UnlimplayConfigStore
 import com.example.data.vimeus.VimeusConfigStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -38,6 +39,7 @@ object SettingsBackupManager {
     fun buildJson(context: Context, repository: IptvRepository): String {
         val nsrStore = NsrPlayConfigStore(context.applicationContext)
         val vimeusStore = VimeusConfigStore(context.applicationContext)
+        val unlimplayStore = UnlimplayConfigStore(context.applicationContext)
 
         val playlists = JSONArray()
         val warnings = JSONArray()
@@ -81,6 +83,13 @@ object SettingsBackupManager {
                     put("apiKey", vimeusStore.apiKey())
                     put("viewKey", vimeusStore.viewKey())
                     put("baseUrl", vimeusStore.baseUrl())
+                }
+            )
+            put(
+                "unlimplay",
+                JSONObject().apply {
+                    put("apiKey", unlimplayStore.apiKey())
+                    put("baseUrl", unlimplayStore.baseUrl())
                 }
             )
         }
@@ -143,6 +152,12 @@ object SettingsBackupManager {
                     apiKey = vimeus.optString("apiKey").takeIf { it.isNotBlank() },
                     viewKey = vimeus.optString("viewKey").takeIf { it.isNotBlank() },
                     baseUrl = vimeus.optString("baseUrl").takeIf { it.isNotBlank() }
+                )
+            }
+            settings.optJSONObject("unlimplay")?.let { unlimplay ->
+                UnlimplayConfigStore(context.applicationContext).save(
+                    apiKey = unlimplay.optString("apiKey").takeIf { it.isNotBlank() },
+                    baseUrl = unlimplay.optString("baseUrl").takeIf { it.isNotBlank() }
                 )
             }
         }

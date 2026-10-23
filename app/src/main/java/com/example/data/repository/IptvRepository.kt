@@ -19,6 +19,9 @@ import com.example.data.nsrplay.watchKey
 import com.example.data.vimeus.VimeusHistoryItem
 import com.example.data.vimeus.VimeusMedia
 import com.example.data.vimeus.VimeusType
+import com.example.data.unlimplay.UnlimplayHistoryItem
+import com.example.data.unlimplay.UnlimplayMedia
+import com.example.data.unlimplay.UnlimplayType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -57,6 +60,12 @@ class IptvRepository(private val context: Context) {
     private val _vimeusHistory = MutableStateFlow<List<VimeusHistoryItem>>(emptyList())
     val vimeusHistory: StateFlow<List<VimeusHistoryItem>> = _vimeusHistory.asStateFlow()
 
+    private val _unlimplayWatched = MutableStateFlow<Set<String>>(emptySet())
+    val unlimplayWatched: StateFlow<Set<String>> = _unlimplayWatched.asStateFlow()
+
+    private val _unlimplayHistory = MutableStateFlow<List<UnlimplayHistoryItem>>(emptyList())
+    val unlimplayHistory: StateFlow<List<UnlimplayHistoryItem>> = _unlimplayHistory.asStateFlow()
+
     private val _isContentLoaded = MutableStateFlow(false)
     val isContentLoaded: StateFlow<Boolean> = _isContentLoaded.asStateFlow()
 
@@ -85,6 +94,7 @@ class IptvRepository(private val context: Context) {
         loadWatchedNsr()
         loadNsrHistory()
         loadVimeus()
+        loadUnlimplay()
         // Persisted channel lists can contain thousands of entries. Parse them
         // off the main thread so the first frame and tab switch stay fluid.
         repoScope.launch {
@@ -146,6 +156,59 @@ class IptvRepository(private val context: Context) {
                     )
                 }
                 prefs.edit().putString("vimeus_history_json", array.toString()).apply()
+            } catch (_: Throwable) {
+            }
+        }
+    }
+
+    private fun loadUnlimplay() {
+        _unlimplayWatched.value = prefs.getStringSet("watched_unlimplay_keys", emptySet()) ?: emptySet()
+        val raw = prefs.getString("unlimplay_history_json", null) ?: return
+        try {
+            val array = JSONArray(raw)
+            val list = mutableListOf<UnlimplayHistoryItem>()
+            for (i in 0 until array.length()) {
+                val obj = array.optJSONObject(i) ?: continue
+                val id = obj.optLong("id", 0L)
+                if (id <= 0L) continue
+                val type = try {
+                    UnlimplayType.valueOf(obj.optString("type", UnlimplayType.MOVIE.path).uppercase())
+                } catch (_: Exception) {
+                    UnlimplayType.MOVIE
+                }
+                list.add(
+                    UnlimplayHistoryItem(
+                        id = id,
+                        type = type,
+                        title = obj.optString("title").ifBlank { id.toString() },
+                        posterUrl = obj.optString("posterUrl").takeIf { it.isNotBlank() },
+                        year = obj.optString("year").takeIf { it.isNotBlank() },
+                        lastWatchedTimestamp = obj.optLong("lastWatchedTimestamp", 0L)
+                    )
+                )
+            }
+            _unlimplayHistory.value = list.sortedByDescending { it.lastWatchedTimestamp }.take(30)
+        } catch (_: Throwable) {
+        }
+    }
+
+    private fun saveUnlimplayHistory(list: List<UnlimplayHistoryItem>) {
+        repoScope.launch {
+            try {
+                val array = JSONArray()
+                list.forEach { entry ->
+                    array.put(
+                        JSONObject().apply {
+                            put("id", entry.id)
+                            put("type", entry.type.path)
+                            put("title", entry.title)
+                            put("posterUrl", entry.posterUrl ?: "")
+                            put("year", entry.year ?: "")
+                            put("lastWatchedTimestamp", entry.lastWatchedTimestamp)
+                        }
+                    )
+                }
+                prefs.edit().putString("unlimplay_history_json", array.toString()).apply()
             } catch (_: Throwable) {
             }
         }
@@ -637,18 +700,47 @@ class IptvRepository(private val context: Context) {
     fun isVimeusWatched(media: VimeusMedia): Boolean =
         _vimeusWatched.value.contains(media.watchKey())
 
+    fun markUnlimplayWatched(media: UnlimplayMedia) {
+        val key = media.watchKey()
+        if (!_unlimplayWatched.value.contains(key)) {
+            val updated = _unlimplayWatched.value + key
+            _unlimplayWatched.value = updated
+            prefs.edit().putStringSet("watched_unlimplay_keys", updated).apply()
+        }
+        val entry = UnlimplayHistoryItem(
+            id = media.id,
+            type = media.type,
+            title = media.title,
+            posterUrl = media.posterUrl,
+            year = media.year,
+            lastWatchedTimestamp = System.currentTimeMillis()
+        )
+        val updatedHistory = (_unlimplayHistory.value.filterNot { it.watchKey == key } + entry)
+            .sortedByDescending { it.lastWatchedTimestamp }
+            .take(30)
+        _unlimplayHistory.value = updatedHistory
+        saveUnlimplayHistory(updatedHistory)
+    }
+
+    fun isUnlimplayWatched(media: UnlimplayMedia): Boolean =
+        _unlimplayWatched.value.contains(media.watchKey())
+
     fun clearHistory() {
         _history.value = emptyList()
         _watchedNsr.value = emptySet()
         _nsrHistory.value = emptyList()
         _vimeusWatched.value = emptySet()
         _vimeusHistory.value = emptyList()
+        _unlimplayWatched.value = emptySet()
+        _unlimplayHistory.value = emptyList()
         prefs.edit()
             .remove("watch_history_json")
             .remove("watched_nsr_keys")
             .remove("nsr_history_json")
             .remove("watched_vimeus_keys")
             .remove("vimeus_history_json")
+            .remove("watched_unlimplay_keys")
+            .remove("unlimplay_history_json")
             .apply()
     }
 

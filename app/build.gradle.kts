@@ -26,6 +26,10 @@ val vimeusViewKey: String = envValues["VIMEUS_VIEW_KEY"].orEmpty()
 val vimeusBaseUrl: String = envValues["VIMEUS_BASE_URL"]
   ?.takeIf { it.isNotBlank() }
   ?: "https://vimeus.com"
+val unlimplayTmdbApiKey: String = envValues["UNLIMPLAY_TMDB_API_KEY"].orEmpty()
+val unlimplayBaseUrl: String = envValues["UNLIMPLAY_BASE_URL"]
+  ?.takeIf { it.isNotBlank() }
+  ?: "https://unlimplay.com"
 
 android {
   namespace = "com.example"
@@ -35,8 +39,8 @@ android {
     applicationId = "com.aistudio.blooderstv.kjmnqx"
     minSdk = 24
     targetSdk = 36
-    versionCode = 16
-    versionName = "2.14"
+    versionCode = 17
+    versionName = "2.15"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -57,6 +61,12 @@ android {
       "\"${vimeusViewKey.replace("\\", "\\\\").replace("\"", "\\\"")}\""
     )
     buildConfigField("String", "VIMEUS_BASE_URL", "\"$vimeusBaseUrl\"")
+    buildConfigField(
+      "String",
+      "UNLIMPLAY_TMDB_API_KEY",
+      "\"${unlimplayTmdbApiKey.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+    )
+    buildConfigField("String", "UNLIMPLAY_BASE_URL", "\"$unlimplayBaseUrl\"")
   }
 
   // Do not remove or modify these signingConfigs. They are necessary for building, installing,

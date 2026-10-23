@@ -15,6 +15,7 @@ Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propia
 - **Reproductor web** (`PlayerWebActivity`): WebView con bloqueo de anuncios y pop-ups, pantalla completa HTML5, control de velocidad, modo escritorio, Picture-in-Picture y pantalla siempre encendida.
 - **Extensiones Chrome/Edge** en el reproductor: paquetes `.zip` o `.crx` con content scripts (JS/CSS), background/service worker y reglas estáticas `declarativeNetRequest` (block, redirect, upgradeScheme). Se gestionan desde **Ajustes → Extensiones**.
 - **Vimeus**: catálogo de películas, series y anime con paginación, búsqueda por título, detalle con temporadas/episodios y reproducción embed. Se configura desde **Ajustes → Vimeus**.
+- **Unlimplay**: catálogo de películas, series y anime usando TMDB para metadatos/búsqueda; reproduce mediante los iframes `/f/embed/{tipo}?tmdb=...`. Se configura desde **Ajustes → Unlimplay**.
 - **Búsqueda global** con vista tipo cover-flow: póster central grande, laterales inclinados, borde de acento, reflejo y título/progreso sobre la carátula. IPTV, **Vimeus** y NSRPlay aparecen en ese orden.
 - **Deslizador de tamaño de pósters** a la derecha de los filtros de búsqueda; el tamaño elegido se guarda y se aplica a los tres carruseles (IPTV, Vimeus y NSRPlay).
 - **La barra de búsqueda se oculta al pulsar Enter/OK o la lupa**, para dejar más espacio a los resultados. Un icono de lupa a la izquierda de los filtros la vuelve a mostrar y enfoca el campo.
@@ -184,10 +185,19 @@ El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en A
 - Detalle con póster, sinopsis, temporadas y episodios; cada episodio abre el embed con `se` y `ep`. Si la API entrega `embed_url`, se usa su `view_key` oficial.
 - Historial y etiqueta `VISTO` con la clave `vimeus:<tipo>:<id>`.
 
+### Unlimplay
+
+- `UnlimplayRepository` usa la API v3 de TMDB para tendencias, anime y búsqueda multi-título.
+- Filas **Unlimplay · Películas**, **Unlimplay · Series** y **Unlimplay · Anime** con paginación y caché de 5 minutos.
+- Búsqueda global con badge `UNLIMPLAY` y detalle con póster, sinopsis y año.
+- Reproducción con el embed público `https://unlimplay.com/f/embed/movie?tmdb={id}` (series/anime usan `/f/embed/series` y `/f/embed/anime`). Se usa la variante con `?tmdb=` porque la ruta `/movie/{id}` devuelve token expirado 403 en el servidor; el embed con query carga el reproductor correctamente.
+- Los servidores aparecen dentro del iframe, no se extraen ni se guardan.
+- Historial y etiqueta `VISTO` con la clave `unlimplay:<tipo>:<id>`.
+
 ### Respaldo entre dispositivos
 
 - Pestaña **Respaldo** en Ajustes con **Exportar**, **Compartir** e **Importar**.
-- Exporta `JSON` con listas M3U por URL, cuentas Xtream, tema, buffer, PIN, categorías bloqueadas, favoritos y claves de NSRPlay/Vimeus.
+- Exporta `JSON` con listas M3U por URL, cuentas Xtream, tema, buffer, PIN, categorías bloqueadas, favoritos y claves de NSRPlay/Vimeus/Unlimplay.
 - Al importar, las listas M3U/Xtream se vuelven a descargar y se omite cualquier lista duplicada. Las listas pegadas como texto se avisan porque no se pueden reconstruir.
 - El archivo contiene credenciales y API keys: se recomienda compartirlo solo por canales seguros.
 
@@ -209,10 +219,11 @@ app/src/main/java/com/example/
 ## Verificación realizada
 
 - `:app:assembleDebug` compila y genera APK.
-- 24 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`, `NsrPlayConfigStoreTest`, `ExtensionEngineTest`, `WatchedContentTest`, `VimeusBackupTest`).
+- 25 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`, `NsrPlayConfigStoreTest`, `ExtensionEngineTest`, `WatchedContentTest`, `VimeusBackupTest`).
 - UI probada en 1920×1080 (tablet/TV), 1080×1920 a 420 dpi (teléfono vertical) y 1920×1080 a 420 dpi (teléfono horizontal): cabecera, botón de listas, diálogo de alta y reproductor web.
 - NSRPlay verificado en producción dentro de Películas (badges `NSRPLAY`) y en la búsqueda global.
 - Vimeus verificado en producción: catálogo de películas, series y anime, detalle de serie con temporadas/episodios, reproducción embed y búsqueda “saul” → “Better Call Saul”.
+- Unlimplay verificado con TMDB real: filas de películas/series/anime y búsqueda “saul”; el embed con `?tmdb=` evita el 403 de la ruta con `/id`.
 - Búsqueda visual verificada con “titanic” y “saul”: carrusel de pósters, orden IPTV → Vimeus → NSRPlay, borde de acento y reflejo.
 - Deslizador de tamaño verificado: cambia el póster en vivo y conserva el tamaño tras cerrar y abrir la app.
 - Barra de búsqueda oculta/restaurada verificada con toque y D-pad; al ocultarse, el foco pasa a los filtros.

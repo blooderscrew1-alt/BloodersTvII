@@ -408,6 +408,11 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxSize()
                 )
             } else if (selectedSection == 3) {
+                UnlimplaySettingsContent(
+                    primaryColor = primaryColor,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else if (selectedSection == 4) {
                 ExtensionsSettingsContent(
                     primaryColor = primaryColor,
                     modifier = Modifier.fillMaxSize()
@@ -437,7 +442,7 @@ private fun SettingsSectionTabs(
             .background(Color(0xFF101A24))
             .padding(3.dp)
     ) {
-        listOf("General", "NSRPlay", "Vimeus", "Extensiones", "Respaldo").forEachIndexed { index, label ->
+        listOf("General", "NSRPlay", "Vimeus", "Unlimplay", "Extensiones", "Respaldo").forEachIndexed { index, label ->
             val isSelected = selected == index
             val tabInteraction = remember(index) { MutableInteractionSource() }
             val isTabFocused by tabInteraction.collectIsFocusedAsState()
@@ -468,7 +473,8 @@ private fun SettingsSectionTabs(
                             0 -> "settings_tab_general"
                             1 -> "settings_tab_nsrplay"
                             2 -> "settings_tab_vimeus"
-                            3 -> "settings_tab_extensions"
+                            3 -> "settings_tab_unlimplay"
+                            4 -> "settings_tab_extensions"
                             else -> "settings_tab_backup"
                         }
                     ),
@@ -477,7 +483,7 @@ private fun SettingsSectionTabs(
                 Text(
                     text = label,
                     color = if (isSelected) Color.Black else Color(0xFF9FB0C0),
-                    fontSize = 10.sp,
+                    fontSize = 9.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                     maxLines = 1
                 )

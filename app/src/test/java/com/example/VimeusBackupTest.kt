@@ -6,6 +6,8 @@ import com.example.data.backup.SettingsBackupManager
 import com.example.data.model.BufferMode
 import com.example.data.model.ThemeAccent
 import com.example.data.repository.IptvRepository
+import com.example.data.unlimplay.UnlimplayMedia
+import com.example.data.unlimplay.UnlimplayType
 import com.example.data.vimeus.VimeusHistoryItem
 import com.example.data.vimeus.VimeusMedia
 import com.example.data.vimeus.VimeusType
@@ -67,6 +69,24 @@ class VimeusBackupTest {
         assertEquals("tt3032476", media.imdbId)
         assertEquals(VimeusType.SERIES, media.type)
         assertEquals("vimeus:series:tt3032476", item.watchKey)
+    }
+
+    @Test
+    fun `unlimplay embed uses the public iframe path`() {
+        val movie = UnlimplayMedia(
+            id = 550,
+            title = "Fight Club",
+            posterPath = "/poster.jpg",
+            type = UnlimplayType.MOVIE
+        )
+        assertEquals(
+            "https://unlimplay.com/f/embed/movie?tmdb=550",
+            movie.embedUrl("https://unlimplay.com/")
+        )
+        assertEquals(
+            "unlimplay:series:1399",
+            UnlimplayMedia(1399, "Game of Thrones", null, type = UnlimplayType.SERIES).watchKey()
+        )
     }
 
     @Test

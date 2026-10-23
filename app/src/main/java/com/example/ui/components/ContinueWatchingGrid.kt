@@ -44,6 +44,8 @@ import com.example.data.model.ItemType
 import com.example.data.model.WatchHistoryItem
 import com.example.data.nsrplay.NsrHistoryItem
 import com.example.data.nsrplay.NsrMediaType
+import com.example.data.unlimplay.UnlimplayHistoryItem
+import com.example.data.unlimplay.UnlimplayType
 import com.example.data.vimeus.VimeusHistoryItem
 import com.example.data.vimeus.VimeusType
 
@@ -58,12 +60,14 @@ private data class CardEntry(
     val lastWatchedTimestamp: Long,
     val nsr: NsrHistoryItem? = null,
     val vimeus: VimeusHistoryItem? = null,
+    val unlimplay: UnlimplayHistoryItem? = null,
     val iptv: WatchHistoryItem? = null
 ) {
     val providerLabel: String?
         get() = when {
             nsr != null -> "NSRPLAY"
             vimeus != null -> "VIMEUS"
+            unlimplay != null -> "UNLIMPLAY"
             else -> null
         }
 }
@@ -85,14 +89,18 @@ fun ContinueWatchingGrid(
     iptvHistory: List<WatchHistoryItem>,
     nsrHistory: List<NsrHistoryItem>,
     vimeusHistory: List<VimeusHistoryItem>,
+    unlimplayHistory: List<UnlimplayHistoryItem>,
     primaryColor: Color,
     onPlayIptv: (WatchHistoryItem) -> Unit,
     onPlayNsr: (NsrHistoryItem) -> Unit,
     onPlayVimeus: (VimeusHistoryItem) -> Unit,
+    onPlayUnlimplay: (UnlimplayHistoryItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val visible = remember(iptvHistory, nsrHistory, vimeusHistory) {
-        val merged = ArrayList<CardEntry>(iptvHistory.size + nsrHistory.size + vimeusHistory.size)
+    val visible = remember(iptvHistory, nsrHistory, vimeusHistory, unlimplayHistory) {
+        val merged = ArrayList<CardEntry>(
+            iptvHistory.size + nsrHistory.size + vimeusHistory.size + unlimplayHistory.size
+        )
         iptvHistory.forEach { entry ->
             merged.add(
                 CardEntry(
@@ -135,6 +143,21 @@ fun ContinueWatchingGrid(
                     durationMs = 0L,
                     lastWatchedTimestamp = entry.lastWatchedTimestamp,
                     vimeus = entry
+                )
+            )
+        }
+        unlimplayHistory.forEach { entry ->
+            merged.add(
+                CardEntry(
+                    key = entry.watchKey,
+                    title = entry.title,
+                    posterUrl = entry.posterUrl,
+                    type = if (entry.type == UnlimplayType.MOVIE) ItemType.MOVIE else ItemType.SERIES,
+                    progress = null,
+                    positionMs = 0L,
+                    durationMs = 0L,
+                    lastWatchedTimestamp = entry.lastWatchedTimestamp,
+                    unlimplay = entry
                 )
             )
         }
@@ -187,6 +210,7 @@ fun ContinueWatchingGrid(
                                 when {
                                     entry.nsr != null -> onPlayNsr(entry.nsr)
                                     entry.vimeus != null -> onPlayVimeus(entry.vimeus)
+                                    entry.unlimplay != null -> onPlayUnlimplay(entry.unlimplay)
                                     else -> entry.iptv?.let(onPlayIptv)
                                 }
                             },
@@ -282,6 +306,7 @@ private fun ContinueWatchingCard(
                         when (provider) {
                             "NSRPLAY" -> Color(0xFF00E5FF)
                             "VIMEUS" -> Color(0xFFFF9F1C)
+                            "UNLIMPLAY" -> Color(0xFF9C6BFF)
                             else -> Color(0xCC000000)
                         }
                     )
@@ -346,6 +371,7 @@ private fun ContinueWatchingCard(
             color = when (provider) {
                 "NSRPLAY" -> Color(0xFF66D9E8)
                 "VIMEUS" -> Color(0xFFFFC46B)
+                "UNLIMPLAY" -> Color(0xFFC3A6FF)
                 else -> Color(0xFF8F9DAA)
             },
             fontSize = 9.sp,

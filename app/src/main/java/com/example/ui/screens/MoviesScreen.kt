@@ -53,8 +53,13 @@ import com.example.data.vimeus.VimeusCatalogCache
 import com.example.data.vimeus.VimeusMedia
 import com.example.data.vimeus.VimeusRepository
 import com.example.data.vimeus.VimeusType
+import com.example.data.unlimplay.UnlimplayCatalogCache
+import com.example.data.unlimplay.UnlimplayMedia
+import com.example.data.unlimplay.UnlimplayRepository
+import com.example.data.unlimplay.UnlimplayType
 import com.example.ui.components.ContinueWatchingGrid
 import com.example.ui.components.NsrPlayRow
+import com.example.ui.components.UnlimplayRow
 import com.example.ui.components.VimeusRow
 import com.example.ui.components.NumberedPosterCard
 import com.example.ui.components.StandardPosterCard
@@ -72,21 +77,38 @@ fun MoviesScreen(
     val isContentLoaded by repository.isContentLoaded.collectAsState()
     val nsrHistory by repository.nsrHistory.collectAsState()
     val vimeusHistory by repository.vimeusHistory.collectAsState()
+    val unlimplayHistory by repository.unlimplayHistory.collectAsState()
     val watchedNsr by repository.watchedNsr.collectAsState()
     val watchedVimeus by repository.vimeusWatched.collectAsState()
+    val watchedUnlimplay by repository.unlimplayWatched.collectAsState()
     val watchedIds = remember(history) { history.map { it.itemId }.toSet() }
 
     val context = LocalContext.current
     val nsrRepository = remember { NsrPlayRepository(context.applicationContext) }
     val vimeusRepository = remember { VimeusRepository(context.applicationContext) }
+    val unlimplayRepository = remember { UnlimplayRepository(context.applicationContext) }
     val nsrState by NsrPlayCatalogCache.state(NsrMediaType.MOVIE).collectAsState()
     val vimeusState by VimeusCatalogCache.state(VimeusType.MOVIE).collectAsState()
+    val unlimplayState by UnlimplayCatalogCache.state(UnlimplayType.MOVIE).collectAsState()
     var selectedNsr by remember { mutableStateOf<NsrMedia?>(null) }
     var selectedVimeus by remember { mutableStateOf<VimeusMedia?>(null) }
+    var selectedUnlimplay by remember { mutableStateOf<UnlimplayMedia?>(null) }
 
     LaunchedEffect(Unit) {
         NsrPlayCatalogCache.ensureLoaded(context, NsrMediaType.MOVIE)
         VimeusCatalogCache.ensureLoaded(context, VimeusType.MOVIE)
+        UnlimplayCatalogCache.ensureLoaded(context, UnlimplayType.MOVIE)
+    }
+
+    selectedUnlimplay?.let { media ->
+        UnlimplayDetailScreen(
+            media = media,
+            repository = unlimplayRepository,
+            primaryColor = primaryColor,
+            onPlayed = { repository.markUnlimplayWatched(it) },
+            onBack = { selectedUnlimplay = null }
+        )
+        return
     }
 
     selectedVimeus?.let { media ->
@@ -127,11 +149,16 @@ fun MoviesScreen(
         vimeusHistory.filter { it.type == VimeusType.MOVIE }
     }
 
+    val unlimplayMovieHistory = remember(unlimplayHistory) {
+        unlimplayHistory.filter { it.type == UnlimplayType.MOVIE }
+    }
+
     if (isContentLoaded && movies.isEmpty() && movieHistory.isEmpty() && nsrMovieHistory.isEmpty() &&
-        vimeusMovieHistory.isEmpty() && nsrState.items.isEmpty() && vimeusState.items.isEmpty() &&
-        !nsrState.isLoading && !vimeusState.isLoading &&
-        nsrState.error == null && vimeusState.error == null &&
-        nsrState.loadedAt > 0L && vimeusState.loadedAt > 0L
+        vimeusMovieHistory.isEmpty() && unlimplayMovieHistory.isEmpty() &&
+        nsrState.items.isEmpty() && vimeusState.items.isEmpty() && unlimplayState.items.isEmpty() &&
+        !nsrState.isLoading && !vimeusState.isLoading && !unlimplayState.isLoading &&
+        nsrState.error == null && vimeusState.error == null && unlimplayState.error == null &&
+        nsrState.loadedAt > 0L && vimeusState.loadedAt > 0L && unlimplayState.loadedAt > 0L
     ) {
         Box(
             modifier = modifier
@@ -211,12 +238,13 @@ fun MoviesScreen(
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // Dynamic "Continuar viendo" grid replaces the old hero banner.
-        if (movieHistory.isNotEmpty() || nsrMovieHistory.isNotEmpty() || vimeusMovieHistory.isNotEmpty()) {
+        if (movieHistory.isNotEmpty() || nsrMovieHistory.isNotEmpty() || vimeusMovieHistory.isNotEmpty() || unlimplayMovieHistory.isNotEmpty()) {
             item {
                 ContinueWatchingGrid(
                     iptvHistory = movieHistory,
                     nsrHistory = nsrMovieHistory,
                     vimeusHistory = vimeusMovieHistory,
+                    unlimplayHistory = unlimplayMovieHistory,
                     primaryColor = primaryColor,
                     onPlayIptv = { entry ->
                         onPlayItem(
@@ -230,7 +258,8 @@ fun MoviesScreen(
                         )
                     },
                     onPlayNsr = { entry -> selectedNsr = entry.toMedia() },
-                    onPlayVimeus = { entry -> selectedVimeus = entry.toMedia() }
+                    onPlayVimeus = { entry -> selectedVimeus = entry.toMedia() },
+                    onPlayUnlimplay = { entry -> selectedUnlimplay = entry.toMedia() }
                 )
             }
         }
@@ -266,6 +295,24 @@ fun MoviesScreen(
                     VimeusCatalogCache.ensureLoaded(
                         context = context,
                         type = VimeusType.MOVIE,
+                        force = true
+                    )
+                }
+            )
+        }
+
+        item {
+            UnlimplayRow(
+                title = "Unlimplay · Películas",
+                state = unlimplayState,
+                primaryColor = primaryColor,
+                watchedKeys = watchedUnlimplay,
+                onItemClick = { selectedUnlimplay = it },
+                onLoadMore = { UnlimplayCatalogCache.loadMore(context, UnlimplayType.MOVIE) },
+                onRetry = {
+                    UnlimplayCatalogCache.ensureLoaded(
+                        context = context,
+                        type = UnlimplayType.MOVIE,
                         force = true
                     )
                 }
