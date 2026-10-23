@@ -19,7 +19,8 @@ Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propia
 - **Búsqueda global** con vista tipo cover-flow: póster central grande, laterales inclinados, borde de acento, reflejo y título/progreso sobre la carátula. Orden: IPTV → Vimeus → NSRPlay → **Unlimplay al final**.
 - **Deslizador de tamaño de pósters** a la derecha de los filtros de búsqueda; el tamaño elegido se guarda y se aplica a los tres carruseles (IPTV, Vimeus y NSRPlay).
 - **La barra de búsqueda se oculta al pulsar Enter/OK o la lupa**, para dejar más espacio a los resultados. Un icono de lupa a la izquierda de los filtros la vuelve a mostrar y enfoca el campo.
-- **Continuar viendo**: cuadrícula dinámica basada en el historial de IPTV **y NSRPlay/Vimeus**, con carátula, progreso, tiempo restante y reanudación desde el punto guardado. Sustituye al banner promocional.
+- **Último canal TV**: al abrir la app se restaura el último canal en vivo y su categoría; también se recuerda al cambiar de canal con el control dentro del reproductor.
+- **Continuar viendo**: cuadrícula dinámica basada en el historial de IPTV **y NSRPlay/Vimeus/Unlimplay**, con carátula, progreso, tiempo restante y reanudación desde el punto guardado.
 - **Respaldo**: exporta, comparte o importa listas M3U/Xtream y ajustes entre dispositivos desde **Ajustes → Respaldo**.
 - **Etiquetas `VISTO`** en tarjetas de películas/series y en la búsqueda. Se basan en el historial IPTV y en un registro persistente para NSRPlay.
 - **Ajustes**: tema, caché/buffer para conexiones lentas, PIN parental, historial, NSRPlay y extensiones.
@@ -229,6 +230,7 @@ app/src/main/java/com/example/
 - Búsqueda visual verificada con “titanic” y “saul”: carrusel de pósters, orden IPTV → Vimeus → NSRPlay, borde de acento y reflejo.
 - Deslizador de tamaño verificado: cambia el póster en vivo y conserva el tamaño tras cerrar y abrir la app.
 - Barra de búsqueda oculta/restaurada verificada con toque y D-pad; al ocultarse, el foco pasa a los filtros.
+- Último canal TV verificado tras cerrar y abrir la app; el canal y su categoría se restauran.
 - Navegación D-pad verificada en la búsqueda: campo → filtros → carrusel, izquierda/derecha entre pósters y Enter abre el detalle.
 - Arranque en frío medido en el emulador con listas IPTV cargadas: ~1,7 s (`am start -W`), con canales cargados en segundo plano.
 - Respaldo verificado exportando a `Download`, leyendo el JSON e importándolo de vuelta.

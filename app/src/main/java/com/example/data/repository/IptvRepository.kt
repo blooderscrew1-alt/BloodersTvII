@@ -72,6 +72,11 @@ class IptvRepository(private val context: Context) {
     private val _searchPosterScale = MutableStateFlow(0.5f)
     val searchPosterScale: StateFlow<Float> = _searchPosterScale.asStateFlow()
 
+    var lastTvChannelId: String? = prefs.getString("last_tv_channel_id", null)
+        private set
+    var lastTvCategory: String? = prefs.getString("last_tv_category", null)
+        private set
+
     private val _favorites = MutableStateFlow<Set<String>>(emptySet())
     val favorites: StateFlow<Set<String>> = _favorites.asStateFlow()
 
@@ -778,5 +783,15 @@ class IptvRepository(private val context: Context) {
         val clean = scale.coerceIn(0f, 1f)
         _searchPosterScale.value = clean
         prefs.edit().putFloat("search_poster_scale", clean).apply()
+    }
+
+    fun rememberTvChannel(item: PlaylistItem, category: String? = null) {
+        if (item.type != ItemType.LIVE) return
+        lastTvChannelId = item.id
+        lastTvCategory = category ?: item.category
+        prefs.edit()
+            .putString("last_tv_channel_id", lastTvChannelId)
+            .putString("last_tv_category", lastTvCategory)
+            .apply()
     }
 }

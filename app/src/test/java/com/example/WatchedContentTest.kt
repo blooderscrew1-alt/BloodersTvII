@@ -2,6 +2,8 @@ package com.example
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.example.data.model.ItemType
+import com.example.data.model.PlaylistItem
 import com.example.data.nsrplay.NsrMedia
 import com.example.data.nsrplay.NsrMediaType
 import com.example.data.nsrplay.watchKey
@@ -50,6 +52,27 @@ class WatchedContentTest {
         assertFalse(repository.isNsrWatched(item))
         assertTrue(repository.watchedNsr.value.isEmpty())
         assertTrue(repository.nsrHistory.value.isEmpty())
+    }
+
+    @Test
+    fun `last live TV channel is persisted`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = IptvRepository(context)
+        val channel = PlaylistItem(
+            id = "live-42",
+            name = "Canal 42",
+            streamUrl = "https://example.com/live.m3u8",
+            category = "Deportes",
+            type = ItemType.LIVE
+        )
+
+        repository.rememberTvChannel(channel, "Deportes")
+
+        assertEquals("live-42", repository.lastTvChannelId)
+        assertEquals("Deportes", repository.lastTvCategory)
+        val reloaded = IptvRepository(context)
+        assertEquals("live-42", reloaded.lastTvChannelId)
+        assertEquals("Deportes", reloaded.lastTvCategory)
     }
 
     @Test

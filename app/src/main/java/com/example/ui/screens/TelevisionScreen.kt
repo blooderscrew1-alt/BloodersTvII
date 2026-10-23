@@ -186,6 +186,7 @@ fun TelevisionScreen(
     var selectedChannel by remember { mutableStateOf<PlaylistItem?>(null) }
     var showPinDialogForCategory by remember { mutableStateOf<String?>(null) }
     var unlockedCategories by remember { mutableStateOf(setOf<String>()) }
+    var restoredLastChannel by remember { mutableStateOf(false) }
 
     // Filter channels for selected category
     val currentChannels = remember(liveItems, selectedCategory, favorites) {
@@ -196,13 +197,30 @@ fun TelevisionScreen(
         }
     }
 
-    // Auto select first channel if none selected
-    LaunchedEffect(currentChannels) {
-        if (selectedChannel == null || !currentChannels.any { it.id == selectedChannel?.id }) {
+    // Restore the last live channel before the generic "first channel" fallback.
+    LaunchedEffect(liveItems, categories) {
+        if (restoredLastChannel) return@LaunchedEffect
+        val saved = repository.lastTvChannelId?.let { id ->
+            liveItems.firstOrNull { it.id == id }
+        }
+        if (saved != null) {
+            selectedChannel = saved
+            categories.firstOrNull { it.equals(saved.category, ignoreCase = true) }
+                ?.let { selectedCategory = it }
+            playerManager.playStream(saved.streamUrl)
+        }
+        restoredLastChannel = true
+    }
+
+    // Auto select first channel only when there is no remembered channel.
+    LaunchedEffect(currentChannels, restoredLastChannel) {
+        if (!restoredLastChannel) return@LaunchedEffect
+        if (selectedChannel == null) {
             val first = currentChannels.firstOrNull()
             if (first != null) {
                 selectedChannel = first
                 playerManager.playStream(first.streamUrl)
+                repository.rememberTvChannel(first, selectedCategory)
             }
         }
     }
@@ -348,6 +366,7 @@ fun TelevisionScreen(
                             onClick = {
                                 selectedChannel = channel
                                 playerManager.playStream(channel.streamUrl)
+                                repository.rememberTvChannel(channel, selectedCategory)
                             }
                         )
                     }
@@ -421,6 +440,7 @@ fun TelevisionScreen(
                                         onClick = {
                                             selectedChannel = channel
                                             playerManager.playStream(channel.streamUrl)
+                                            repository.rememberTvChannel(channel, selectedCategory)
                                         }
                                     )
                                 }

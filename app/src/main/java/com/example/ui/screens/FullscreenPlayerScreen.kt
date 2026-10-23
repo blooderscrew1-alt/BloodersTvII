@@ -109,6 +109,9 @@ fun FullscreenPlayerScreen(
             0L
         }
         activeItem = item
+        if (item.type == ItemType.LIVE) {
+            repository.rememberTvChannel(item)
+        }
         playerManager.playStream(item.streamUrl, resumePosition)
     }
 
