@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -127,18 +129,20 @@ fun SearchScreen(
             ),
             shape = RoundedCornerShape(10.dp),
             modifier = Modifier
+                .widthIn(max = 900.dp)
                 .fillMaxWidth()
                 .testTag("iptv_search_input")
         )
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Type Filter Chips
-        Row(
+        // Type Filter Chips (scrollable: never clipped on narrow phones)
+        LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(end = 12.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            listOf("Todo", "Canales", "Películas", "Series").forEach { filter ->
+            items(listOf("Todo", "Canales", "Películas", "Series")) { filter ->
                 val isSelected = selectedFilter == filter
                 FilterChip(
                     selected = isSelected,
@@ -147,7 +151,8 @@ fun SearchScreen(
                         Text(
                             text = filter,
                             fontSize = 11.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            maxLines = 1
                         )
                     },
                     colors = FilterChipDefaults.filterChipColors(

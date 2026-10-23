@@ -10,6 +10,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -60,31 +61,38 @@ fun HeroBanner(
         label = "hero_scale"
     )
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(230.dp)
-            .scale(scale)
-            .clip(RoundedCornerShape(14.dp))
-            .border(
-                width = if (isFocused) 2.5.dp else 1.5.dp,
-                color = if (isFocused) primaryColor else primaryColor.copy(alpha = 0.45f),
-                shape = RoundedCornerShape(14.dp)
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        // Proportional hero: short enough on phones and TV without eating the
+        // whole first screen, but never cramped.
+        val bannerHeight = (maxWidth * 0.42f).coerceIn(170.dp, 320.dp)
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(bannerHeight)
+                .scale(scale)
+                .clip(RoundedCornerShape(14.dp))
+                .border(
+                    width = if (isFocused) 2.5.dp else 1.5.dp,
+                    color = if (isFocused) primaryColor else primaryColor.copy(alpha = 0.45f),
+                    shape = RoundedCornerShape(14.dp)
+                )
+                .background(Color(0xFF0F171E))
+                .focusable(interactionSource = interactionSource)
+                .clickable(interactionSource = interactionSource, indication = null) {
+                    onPlayClick(item)
+                }
+                .testTag("hero_banner_card")
+        ) {
+        // Backdrop Image (no remote stock fallback: saves data on low-end devices)
+        if (!item.logoUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = item.logoUrl,
+                contentDescription = item.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
             )
-            .background(Color(0xFF0F171E))
-            .focusable(interactionSource = interactionSource)
-            .clickable(interactionSource = interactionSource, indication = null) {
-                onPlayClick(item)
-            }
-            .testTag("hero_banner_card")
-    ) {
-        // Backdrop Image
-        AsyncImage(
-            model = item.logoUrl ?: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=1200",
-            contentDescription = item.name,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
+        }
 
         // Gradient overlay for contrast
         Box(
@@ -174,4 +182,5 @@ fun HeroBanner(
             Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(Color(0x66FFFFFF)))
         }
     }
+}
 }

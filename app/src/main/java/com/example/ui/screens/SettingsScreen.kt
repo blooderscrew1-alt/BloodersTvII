@@ -217,7 +217,7 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                             Text(
                                 text = "Espacio en disco utilizado",
                                 color = Color.White,
@@ -424,6 +424,14 @@ fun RemoteShortcutRow(key: String, action: String) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(text = key, color = Color(0xFFCCFF00), fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        Text(text = action, color = Color(0xFFC0CAD5), fontSize = 11.sp)
+        Spacer(modifier = Modifier.width(10.dp))
+        Text(
+            text = action,
+            color = Color(0xFFC0CAD5),
+            fontSize = 11.sp,
+            textAlign = androidx.compose.ui.text.style.TextAlign.End,
+            maxLines = 2,
+            modifier = Modifier.weight(1f)
+        )
     }
 }

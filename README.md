@@ -1,0 +1,102 @@
+# BloodersTv II
+
+Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propias y para el catálogo de **NSRPlay**. La prioridad del proyecto es una navegación fluida incluso en equipos de gama baja: listas ligeras, sin animaciones costosas, sin servicios que no se usan y un reproductor web enfocado.
+
+## Qué incluye
+
+- **TV en vivo** desde listas M3U/M3U8 y Xtream Codes, con zapping y favoritos.
+- **Películas y series** de tus listas IPTV.
+- **NSRPlay** como proveedor adicional de películas y series:
+  - catálogo paginado y filtros por género;
+  - búsqueda explícita (no se dispara una petición por cada tecla);
+  - detalle con sinopsis, reparto de servidores y, en series, temporadas/episodios;
+  - cada servidor abre el **reproductor web unificado** basado en Serchwebview.
+- **Reproductor web** (`PlayerWebActivity`): WebView con bloqueo de anuncios y pop-ups, pantalla completa HTML5, control de velocidad, modo escritorio, Picture-in-Picture y pantalla siempre encendida.
+- **Ajustes**: tema, caché/buffer para conexiones lentas, PIN parental e historial.
+- **Sin Firebase, Room, Retrofit, Moshi ni KSP**: se retiraron dependencias que el código no usaba para reducir tamaño, arranque y tiempo de compilación.
+
+## Configurar NSRPlay
+
+La API Key se lee del archivo `.env` (ignorado por git) y se inyecta en `BuildConfig` al compilar. **No se escribe en el código fuente**.
+
+1. Copia `.env.example` a `.env`.
+2. Reemplaza el valor:
+
+```properties
+NSRPLAY_API_KEY=tu_clave_real
+# Opcional, para usar tu propio proxy:
+# NSRPLAY_BASE_URL=https://tu-proxy.example.com
+```
+
+3. Recompila la app.
+
+Si no hay clave, la pestaña NSRPlay muestra un aviso en lugar de fallar.
+
+> **Importante para distribuir la app:** cualquier clave incluida en un APK es recuperable por terceros. La documentación de NSRPlay prohíbe publicar la clave en el cliente. Para una versión pública, coloca un proxy propio (una función serverless basta) que añada el header `X-API-Key`, y apunta la app a ese proxy.
+
+Los endpoints usados son:
+
+| Uso | Endpoint |
+| --- | --- |
+| Catálogo | `GET /api/v1/content/catalog?type=movie\|series&page=N&genre=slug` |
+| Búsqueda | `GET /api/v1/content/search?s=texto` |
+| Detalle | `GET /api/v1/content/info/{slug}?type=movie\|series` |
+| Servidores de episodio | `GET /api/v1/content/servers?slug=...&season=N&episode=N` |
+
+El reproductor abre el `embedUrl` del servidor elegido. La app no resuelve ni almacena enlaces de video, y no guarda el catálogo en disco, respetando los términos de NSRPlay.
+
+## Compilar
+
+Requisitos: JDK 17+ y Android SDK con `platforms;android-36` y `build-tools;36.0.0`.
+
+```bash
+./gradlew :app:assembleDebug       # Linux / macOS
+gradlew.bat :app:assembleDebug     # Windows
+# APK: app/build/outputs/apk/debug/app-debug.apk
+```
+
+El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en Android Studio. El proyecto fija `compileSdk 36.1`, `minSdk 24` y `targetSdk 36`.
+
+## Cambios de esta versión
+
+### Menús flotantes y proporciones
+
+- Nuevo `AdaptiveDialogFrame`: todos los diálogos se miden contra la ventana real, con margen seguro, ancho máximo y alto máximo. Ya no usan porcentajes del diálogo de plataforma (que en TV quedaban enormes y en teléfonos pequeños se salían).
+- `AddPlaylistDialog`: formulario con scroll y **footer fijo**; los botones Cancelar/Importar siempre están visibles. Campos de una línea y control segmentado compacto en lugar de `TabRow`.
+- `PlaylistsScreen`: en pantallas angostas el título y el botón "Agregar Lista" se apilan; antes el botón quedaba comprimido a una franja vertical de 10 dp al borde de la pantalla.
+- `CategoryFilterDialog`: cabecera compacta, lista con altura mínima garantizada y footer que se apila en pantallas angostas.
+- `ParentalPinDialog`: teclado y tipografía adaptativos; en horizontal muy bajo se compacta y todo el contenido puede desplazarse.
+- `TopHeaderBar`: se oculta el reloj en pantallas angostas, tamaños reducidos, `statusBars` respetadas y actualización del reloj cada 30 s (antes cada segundo recomponía toda la cabecera).
+- Chips de búsqueda en `LazyRow` para que nunca se corten.
+- Hero banner con altura proporcional al ancho (170–320 dp) en lugar de 230 dp fijos.
+- Campos de búsqueda con ancho máximo en pantallas grandes.
+
+### NSRPlay + Serchwebview
+
+- Pestaña **NSRPlay** dentro de la navegación principal.
+- Cliente HTTP propio y liviano (`NsrPlayRepository`) con mensajes de error claros para 401/404/429/5xx.
+- Grilla adaptativa de pósters, sin animaciones de escala, con carga de más páginas bajo demanda.
+- Detalle de película/serie y selector de servidores por episodio.
+- `PlayerWebActivity` porta el motor de Serchwebview: `PlayerAdBlocker`, script de auto-skip, fullscreen nativo, velocidad, UA de escritorio, PiP y bloqueo de ventanas emergentes.
+
+## Estructura relevante
+
+```
+app/src/main/java/com/example/
+├─ data/nsrplay/           # modelos + cliente de la API NSRPlay
+├─ ui/components/          # AdaptiveDialog, PIN, filtros, cabecera, pósters
+├─ ui/screens/NsrPlayScreen.kt
+├─ webplayer/              # PlayerWebActivity + PlayerAdBlocker (Serchwebview)
+└─ MainActivity.kt
+```
+
+## Verificación realizada
+
+- `:app:assembleDebug` compila y genera APK.
+- 11 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`).
+- UI probada en 1920×1080 (tablet/TV), 1080×1920 a 420 dpi (teléfono vertical) y 1920×1080 a 420 dpi (teléfono horizontal): cabecera, botón de listas, diálogo de alta y reproductor web.
+- El catálogo/detalle de NSRPlay se validó contra un mock local porque la red del emulador de pruebas bloquea `nsrplay.space`; la app real usa la URL de producción.
+
+## Aviso
+
+BloodersTv no aloja, sube ni distribuye contenido. Las listas IPTV son responsabilidad del usuario y NSRPlay indexa enlaces publicados por terceros. Verifica que tu uso cumpla las leyes de tu país y las condiciones de cada proveedor.

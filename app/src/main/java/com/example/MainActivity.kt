@@ -27,6 +27,7 @@ import com.example.ui.components.AppTab
 import com.example.ui.components.TopHeaderBar
 import com.example.ui.screens.FullscreenPlayerScreen
 import com.example.ui.screens.MoviesScreen
+import com.example.ui.screens.NsrPlayScreen
 import com.example.ui.screens.PlaylistsScreen
 import com.example.ui.screens.PremiumScreen
 import com.example.ui.screens.SearchScreen
@@ -171,6 +172,9 @@ fun MainApp(
                                 onNavigateToPlaylists = {
                                     currentTab = AppTab.PLAYLISTS
                                 },
+                                primaryColor = primaryColor
+                            )
+                            AppTab.NSRPLAY -> NsrPlayScreen(
                                 primaryColor = primaryColor
                             )
                             AppTab.PLAYLISTS -> PlaylistsScreen(

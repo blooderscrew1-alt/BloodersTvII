@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -69,6 +70,7 @@ import com.example.data.parser.IptvDownloader
 import com.example.data.parser.M3uParser
 import com.example.data.parser.XtreamCodesClient
 import com.example.data.repository.IptvRepository
+import com.example.ui.components.AdaptiveDialogFrame
 import com.example.ui.components.CategoryFilterDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -242,38 +244,29 @@ fun PlaylistsScreen(
             .background(Color(0xFF090E13))
             .padding(20.dp)
     ) {
-        // Top action bar
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    text = "Gestor de Listas IPTV",
-                    color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Soporte M3U, M3U8, Xtream Codes API y filtrado previo de contenido basura.",
-                    color = Color(0xFF8F9DAA),
-                    fontSize = 12.sp
+        // Top action bar. On narrow screens the title and the button stack, so
+        // the button can never be squeezed into a thin vertical strip.
+        val compactHeader = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp < 560
+        if (compactHeader) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                PlaylistsHeaderTitle()
+                Spacer(modifier = Modifier.height(10.dp))
+                AddPlaylistButton(
+                    primaryColor = primaryColor,
+                    onClick = { showAddDialog = true }
                 )
             }
-
-            Button(
-                onClick = { showAddDialog = true },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = primaryColor,
-                    contentColor = Color.Black
-                ),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.testTag("add_playlist_button")
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Agregar Lista", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                PlaylistsHeaderTitle(modifier = Modifier.weight(1f))
+                AddPlaylistButton(
+                    primaryColor = primaryColor,
+                    onClick = { showAddDialog = true }
+                )
             }
         }
 
@@ -452,6 +445,44 @@ fun PlaylistsScreen(
 }
 
 @Composable
+private fun PlaylistsHeaderTitle(modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(
+            text = "Gestor de Listas IPTV",
+            color = Color.White,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = "Soporte M3U, M3U8, Xtream Codes API y filtrado previo de contenido basura.",
+            color = Color(0xFF8F9DAA),
+            fontSize = 12.sp
+        )
+    }
+}
+
+@Composable
+private fun AddPlaylistButton(
+    primaryColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = primaryColor,
+            contentColor = Color.Black
+        ),
+        shape = RoundedCornerShape(8.dp),
+        modifier = modifier.testTag("add_playlist_button")
+    ) {
+        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(modifier = Modifier.width(6.dp))
+        Text("Agregar Lista", fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
+    }
+}
+
+@Composable
 fun AddPlaylistDialog(
     onDismiss: () -> Unit,
     onSubmitM3u: (name: String, content: String, isUrl: Boolean) -> Unit,
@@ -470,188 +501,209 @@ fun AddPlaylistDialog(
     var xtreamUser by remember { mutableStateOf("") }
     var xtreamPass by remember { mutableStateOf("") }
 
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = Color(0xFF0F1722),
+    val canSubmit = if (selectedTab == 0) {
+        m3uUrl.isNotBlank()
+    } else {
+        xtreamHost.isNotBlank() && xtreamUser.isNotBlank() && xtreamPass.isNotBlank()
+    }
+
+    AdaptiveDialogFrame(
+        onDismiss = onDismiss,
+        primaryColor = primaryColor,
+        maxWidth = 560.dp,
+        maxHeight = 780.dp,
+        testTag = "add_playlist_modal"
+    ) {
+        val compact = maxWidth < 430.dp
+        val fieldColors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = primaryColor,
+            unfocusedBorderColor = Color(0xFF243343),
+            focusedLabelColor = primaryColor,
+            unfocusedLabelColor = Color(0xFF8F9DAA),
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White
+        )
+
+        Column(
             modifier = Modifier
-                .fillMaxWidth(0.95f)
-                .fillMaxHeight(0.92f)
-                .border(1.5.dp, primaryColor.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-                .testTag("add_playlist_modal")
+                .fillMaxWidth()
+                .heightIn(max = maxHeight)
         ) {
+            // Scrollable body. The action buttons live outside it, so they are
+            // always visible no matter how small the screen or how many fields.
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState())
-                    .padding(20.dp)
+                    .padding(if (compact) 16.dp else 20.dp)
             ) {
                 Text(
                     text = "Añadir Lista de Contenido",
                     color = Color.White,
-                    fontSize = 18.sp,
+                    fontSize = if (compact) 16.sp else 18.sp,
                     fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = Color(0xFF141E28),
-                    contentColor = primaryColor,
-                    indicator = { tabPositions ->
-                        TabRowDefaults.SecondaryIndicator(
-                            Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                            color = primaryColor
-                        )
-                    }
-                ) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        text = { Text("Lista M3U / M3U8", fontSize = 12.sp, color = if (selectedTab == 0) primaryColor else Color(0xFF8F9DAA)) }
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        text = { Text("Xtream Codes API", fontSize = 12.sp, color = if (selectedTab == 1) primaryColor else Color(0xFF8F9DAA)) }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = playlistName,
-                    onValueChange = { playlistName = it },
-                    label = { Text("Nombre de la lista (Opcional)") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = primaryColor,
-                        unfocusedBorderColor = Color(0xFF243343),
-                        focusedLabelColor = primaryColor,
-                        unfocusedLabelColor = Color(0xFF8F9DAA),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    ),
-                    modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // Compact custom segmented control (lighter than TabRow and never clips).
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF141E28))
+                        .padding(3.dp)
+                ) {
+                    listOf("Lista M3U / M3U8", "Xtream Codes").forEachIndexed { index, label ->
+                        val selected = selectedTab == index
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (selected) primaryColor else Color.Transparent)
+                                .clickable { selectedTab = index }
+                                .padding(vertical = 8.dp, horizontal = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = label,
+                                color = if (selected) Color.Black else Color(0xFF9FB0C0),
+                                fontSize = if (compact) 11.sp else 12.sp,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                OutlinedTextField(
+                    value = playlistName,
+                    onValueChange = { playlistName = it },
+                    label = { Text("Nombre de la lista (opcional)") },
+                    singleLine = true,
+                    colors = fieldColors,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
                 if (selectedTab == 0) {
-                    // M3U URL or Text Paste
                     OutlinedTextField(
                         value = m3uUrl,
                         onValueChange = { m3uUrl = it },
-                        label = { Text(if (isPasteMode) "Contenido M3U (#EXTM3U...)" else "URL de la lista M3U/M3U8") },
-                        placeholder = { Text(if (isPasteMode) "#EXTM3U..." else "http://servidor.com/lista.m3u8") },
-                        minLines = if (isPasteMode) 4 else 1,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = primaryColor,
-                            unfocusedBorderColor = Color(0xFF243343),
-                            focusedLabelColor = primaryColor,
-                            unfocusedLabelColor = Color(0xFF8F9DAA),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
+                        label = {
+                            Text(
+                                if (isPasteMode) "Contenido M3U (#EXTM3U...)"
+                                else "URL de la lista M3U / M3U8"
+                            )
+                        },
+                        placeholder = {
+                            Text(if (isPasteMode) "#EXTM3U..." else "http://servidor.com/lista.m3u8")
+                        },
+                        singleLine = !isPasteMode,
+                        minLines = if (isPasteMode) 3 else 1,
+                        maxLines = if (isPasteMode) 6 else 1,
+                        colors = fieldColors,
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Spacer(modifier = Modifier.height(6.dp))
-
                     Text(
-                        text = if (isPasteMode) "Cambiar a enlace URL" else "¿Pegar texto M3U completo? Toca aquí",
+                        text = if (isPasteMode) "Cambiar a enlace URL"
+                        else "¿Tienes el texto M3U? Toca aquí para pegarlo",
                         color = primaryColor,
                         fontSize = 11.sp,
+                        maxLines = 1,
                         modifier = Modifier
                             .clickable { isPasteMode = !isPasteMode }
-                            .padding(vertical = 4.dp)
+                            .padding(vertical = 8.dp)
                     )
                 } else {
-                    // Xtream Codes inputs
                     OutlinedTextField(
                         value = xtreamHost,
                         onValueChange = { xtreamHost = it },
-                        label = { Text("Servidor URL (ej: http://dominio.tv:8080)") },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = primaryColor,
-                            unfocusedBorderColor = Color(0xFF243343),
-                            focusedLabelColor = primaryColor,
-                            unfocusedLabelColor = Color(0xFF8F9DAA),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
+                        label = { Text("Servidor (ej: http://dominio.tv:8080)") },
+                        singleLine = true,
+                        colors = fieldColors,
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(
                             value = xtreamUser,
                             onValueChange = { xtreamUser = it },
                             label = { Text("Usuario") },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = primaryColor,
-                                unfocusedBorderColor = Color(0xFF243343),
-                                focusedLabelColor = primaryColor,
-                                unfocusedLabelColor = Color(0xFF8F9DAA),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White
-                            ),
+                            singleLine = true,
+                            colors = fieldColors,
                             modifier = Modifier.weight(1f)
                         )
 
                         OutlinedTextField(
                             value = xtreamPass,
                             onValueChange = { xtreamPass = it },
-                            label = { Text("Contraseña") },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = primaryColor,
-                                unfocusedBorderColor = Color(0xFF243343),
-                                focusedLabelColor = primaryColor,
-                                unfocusedLabelColor = Color(0xFF8F9DAA),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White
-                            ),
+                            label = { Text("Clave") },
+                            singleLine = true,
+                            colors = fieldColors,
                             modifier = Modifier.weight(1f)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(6.dp))
+            }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+            // Sticky footer
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF0C141D))
+                    .padding(horizontal = if (compact) 14.dp else 18.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E2833)),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                    modifier = Modifier.height(38.dp)
                 ) {
-                    Button(
-                        onClick = onDismiss,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E2833))
-                    ) {
-                        Text("Cancelar", color = Color(0xFFC0CAD5))
-                    }
+                    Text("Cancelar", color = Color(0xFFC0CAD5), fontSize = 12.sp, maxLines = 1)
+                }
 
-                    Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
-                    Button(
-                        onClick = {
-                            if (selectedTab == 0) {
-                                if (m3uUrl.isNotBlank()) {
-                                    onSubmitM3u(playlistName, m3uUrl.trim(), !isPasteMode)
-                                }
-                            } else {
-                                if (xtreamHost.isNotBlank() && xtreamUser.isNotBlank() && xtreamPass.isNotBlank()) {
-                                    onSubmitXtream(playlistName, xtreamHost.trim(), xtreamUser.trim(), xtreamPass.trim())
-                                }
+                Button(
+                    onClick = {
+                        if (selectedTab == 0) {
+                            if (m3uUrl.isNotBlank()) {
+                                onSubmitM3u(playlistName, m3uUrl.trim(), !isPasteMode)
                             }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = primaryColor,
-                            contentColor = Color.Black
-                        )
-                    ) {
-                        Text("Continuar y Filtrar", fontWeight = FontWeight.Bold)
-                    }
+                        } else {
+                            if (canSubmit) {
+                                onSubmitXtream(
+                                    playlistName,
+                                    xtreamHost.trim(),
+                                    xtreamUser.trim(),
+                                    xtreamPass.trim()
+                                )
+                            }
+                        }
+                    },
+                    enabled = canSubmit,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = primaryColor,
+                        contentColor = Color.Black,
+                        disabledContainerColor = Color(0xFF26323D),
+                        disabledContentColor = Color(0xFF7F8C99)
+                    ),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                    modifier = Modifier.height(38.dp)
+                ) {
+                    Text("Importar", fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
                 }
             }
         }

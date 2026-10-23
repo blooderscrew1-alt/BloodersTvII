@@ -9,14 +9,18 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -48,6 +52,7 @@ enum class AppTab(val label: String) {
     TELEVISION("Televisión"),
     PELICULAS("Películas"),
     SERIES("Series"),
+    NSRPLAY("NSRPlay"),
     PLAYLISTS("Playlists"),
     AJUSTES("Ajustes"),
     PREMIUM("Premium")
@@ -72,18 +77,27 @@ fun TopHeaderBar(
             val time = timeFormat.format(now).lowercase(Locale.getDefault())
             val date = dateFormat.format(now)
             currentTimeString = "$time • $date"
-            delay(1000)
+            // Minute precision is enough: updating every second recomposed the
+            // whole header (and all tabs) 60x more often on low-end devices.
+            delay(30_000)
         }
     }
 
-    Row(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .height(58.dp)
             .background(Color(0xFF090E13))
-            .padding(horizontal = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .windowInsetsPadding(WindowInsets.statusBars)
     ) {
+        val compact = maxWidth < 520.dp
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(if (compact) 54.dp else 58.dp)
+                .padding(horizontal = if (compact) 8.dp else 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
         // Left: Logo & Search
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -92,7 +106,7 @@ fun TopHeaderBar(
             // App Badge Logo
             Box(
                 modifier = Modifier
-                    .size(34.dp)
+                    .size(if (compact) 30.dp else 34.dp)
                     .clip(CircleShape)
                     .background(Color(0xFF14202B))
                     .border(1.dp, primaryColor.copy(alpha = 0.5f), CircleShape),
@@ -102,7 +116,7 @@ fun TopHeaderBar(
                     imageVector = Icons.Default.Tv,
                     contentDescription = "Logo BloodersTv II",
                     tint = primaryColor,
-                    modifier = Modifier.size(19.dp)
+                    modifier = Modifier.size(if (compact) 17.dp else 19.dp)
                 )
             }
 
@@ -111,7 +125,7 @@ fun TopHeaderBar(
             val isSearchFocused by searchInteraction.collectIsFocusedAsState()
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(if (compact) 32.dp else 36.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(if (isSearchFocused) primaryColor.copy(alpha = 0.2f) else Color(0xFF131D27))
                     .border(
@@ -163,7 +177,7 @@ fun TopHeaderBar(
                             indication = null,
                             onClick = { onTabSelected(tab) }
                         )
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .padding(horizontal = if (compact) 8.dp else 10.dp, vertical = 6.dp)
                         .testTag("nav_tab_${tab.name.lowercase()}")
                 ) {
                     Text(
@@ -173,7 +187,7 @@ fun TopHeaderBar(
                             isTabFocused -> primaryColor
                             else -> Color(0xFF8F9CA8)
                         },
-                        fontSize = 14.sp,
+                        fontSize = if (compact) 13.sp else 14.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                     )
 
@@ -192,20 +206,24 @@ fun TopHeaderBar(
 
         Spacer(modifier = Modifier.width(6.dp))
 
-        // Right: Live Clock & Date badge
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(6.dp))
-                .background(Color(0xFF101720))
-                .padding(horizontal = 8.dp, vertical = 5.dp)
-        ) {
-            Text(
-                text = currentTimeString,
-                color = Color(0xFFA0B0C0),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.testTag("live_clock_text")
-            )
+        // Right: Live Clock & Date badge. Hidden on narrow phones so the nav tabs
+        // always keep a usable width instead of being squeezed off-screen.
+        if (!compact) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFF101720))
+                    .padding(horizontal = 8.dp, vertical = 5.dp)
+            ) {
+                Text(
+                    text = currentTimeString,
+                    color = Color(0xFFA0B0C0),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.testTag("live_clock_text")
+                )
+            }
+        }
         }
     }
 }
