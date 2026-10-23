@@ -32,7 +32,63 @@ class UnlimplayRepository(context: Context) {
 
     fun configFingerprint(): String = config.baseUrl() + "|" + config.apiKey().hashCode()
 
-    fun embedUrl(media: UnlimplayMedia): String = media.embedUrl(config.baseUrl())
+    fun embedUrl(media: UnlimplayMedia, season: Int? = null, episode: Int? = null): String =
+        media.embedUrl(config.baseUrl(), season, episode)
+
+    suspend fun getSeasons(tmdbId: Long): List<UnlimplaySeason> = withContext(Dispatchers.IO) {
+        if (tmdbId <= 0L) return@withContext emptyList()
+        val json = get("/3/tv/$tmdbId", mapOf("language" to "es-MX"))
+        val array = json.optJSONArray("seasons") ?: return@withContext emptyList()
+        val seasons = mutableListOf<UnlimplaySeason>()
+        for (i in 0 until array.length()) {
+            val obj = array.optJSONObject(i) ?: continue
+            val number = obj.optInt("season_number", 0)
+            if (number <= 0) continue
+            seasons.add(
+                UnlimplaySeason(
+                    number = number,
+                    name = obj.optString("name").ifBlank { "Temporada $number" },
+                    episodeCount = obj.optInt("episode_count", 0)
+                )
+            )
+        }
+        seasons.sortedBy { it.number }
+    }
+
+    suspend fun getEpisodes(tmdbId: Long, season: Int): List<UnlimplayEpisode> =
+        withContext(Dispatchers.IO) {
+            if (tmdbId <= 0L || season <= 0) return@withContext emptyList()
+            val cacheKey = "$tmdbId:$season"
+            val now = System.currentTimeMillis()
+            synchronized(episodeCache) {
+                episodeCache[cacheKey]?.let { (timestamp, cached) ->
+                    if (now - timestamp < EPISODE_CACHE_TTL_MS) return@withContext cached
+                }
+            }
+            val json = get(
+                "/3/tv/$tmdbId/season/$season",
+                mapOf("language" to "es-MX")
+            )
+            val array = json.optJSONArray("episodes") ?: JSONArray()
+            val episodes = mutableListOf<UnlimplayEpisode>()
+            for (i in 0 until array.length()) {
+                val obj = array.optJSONObject(i) ?: continue
+                val number = obj.optInt("episode_number", 0)
+                if (number <= 0) continue
+                episodes.add(
+                    UnlimplayEpisode(
+                        season = obj.optInt("season_number", season),
+                        episode = number,
+                        title = obj.optString("name").ifBlank { "Episodio $number" }
+                    )
+                )
+            }
+            val result = episodes.sortedBy { it.episode }
+            synchronized(episodeCache) {
+                episodeCache[cacheKey] = System.currentTimeMillis() to result
+            }
+            result
+        }
 
     suspend fun getCatalog(type: UnlimplayType, page: Int = 1): UnlimplayPage =
         withContext(Dispatchers.IO) {
@@ -162,5 +218,11 @@ class UnlimplayRepository(context: Context) {
         val result = mutableListOf<Int>()
         for (i in 0 until length()) result.add(optInt(i))
         return result
+    }
+
+    companion object {
+        private const val EPISODE_CACHE_TTL_MS = 5 * 60 * 1000L
+        private val episodeCache =
+            mutableMapOf<String, Pair<Long, List<UnlimplayEpisode>>>()
     }
 }

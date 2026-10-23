@@ -3,6 +3,11 @@ package com.example.ui.screens
 import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,16 +21,26 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,10 +52,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.data.unlimplay.UnlimplayEpisode
 import com.example.data.unlimplay.UnlimplayMedia
 import com.example.data.unlimplay.UnlimplayRepository
+import com.example.data.unlimplay.UnlimplaySeason
 import com.example.data.unlimplay.UnlimplayType
 import com.example.webplayer.PlayerWebActivity
+import kotlinx.coroutines.launch
 
 @Composable
 fun UnlimplayDetailScreen(
@@ -51,13 +69,52 @@ fun UnlimplayDetailScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var seasons by remember(media.id) { mutableStateOf<List<UnlimplaySeason>>(emptyList()) }
+    var episodes by remember(media.id) { mutableStateOf<List<UnlimplayEpisode>>(emptyList()) }
+    var selectedSeason by remember(media.id) { mutableIntStateOf(1) }
+    var loading by remember(media.id) { mutableStateOf(media.type != UnlimplayType.MOVIE) }
+    var error by remember(media.id) { mutableStateOf<String?>(null) }
+
     BackHandler { onBack() }
 
-    fun play() {
+    LaunchedEffect(media.id, media.type) {
+        if (media.type == UnlimplayType.MOVIE) {
+            loading = false
+            return@LaunchedEffect
+        }
+        loading = true
+        error = null
+        try {
+            val result = repository.getSeasons(media.id)
+            seasons = result
+            val first = result.firstOrNull()?.number ?: 1
+            selectedSeason = first
+            episodes = repository.getEpisodes(media.id, first)
+        } catch (e: Exception) {
+            error = e.message ?: "No se pudieron cargar los episodios."
+        } finally {
+            loading = false
+        }
+    }
+
+    fun play(season: Int? = null, episode: Int? = null) {
         onPlayed(media)
+        val label = if (season != null && episode != null) {
+            "${media.title} T${season}E${episode}"
+        } else {
+            media.title
+        }
         val intent = Intent(context, PlayerWebActivity::class.java).apply {
-            putExtra(PlayerWebActivity.EXTRA_URL, repository.embedUrl(media))
-            putExtra(PlayerWebActivity.EXTRA_TITLE, media.title)
+            putExtra(
+                PlayerWebActivity.EXTRA_URL,
+                repository.embedUrl(
+                    media = media,
+                    season = season ?: if (media.type == UnlimplayType.MOVIE) null else selectedSeason,
+                    episode = episode ?: 1
+                )
+            )
+            putExtra(PlayerWebActivity.EXTRA_TITLE, label)
             putExtra(PlayerWebActivity.EXTRA_REFERER, "https://unlimplay.com/")
         }
         context.startActivity(intent)
@@ -106,7 +163,7 @@ fun UnlimplayDetailScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
                 Row {
@@ -163,7 +220,9 @@ fun UnlimplayDetailScreen(
 
             item {
                 Button(
-                    onClick = { play() },
+                    onClick = {
+                        if (media.type == UnlimplayType.MOVIE) play() else play(selectedSeason, 1)
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF9C6BFF),
                         contentColor = Color.Black
@@ -176,17 +235,149 @@ fun UnlimplayDetailScreen(
                     Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Ver en Unlimplay",
+                        text = if (media.type == UnlimplayType.MOVIE) {
+                            "Ver en Unlimplay"
+                        } else {
+                            "Ver T${selectedSeason}E1"
+                        },
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
 
+            if (loading) {
+                item {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            color = Color(0xFF9C6BFF),
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Cargando temporadas...", color = Color(0xFF8F9DAA), fontSize = 11.sp)
+                    }
+                }
+            }
+
+            error?.let { message ->
+                item {
+                    Text(message, color = Color(0xFFFF8A96), fontSize = 11.sp)
+                }
+            }
+
+            if (seasons.isNotEmpty()) {
+                item {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(seasons) { season ->
+                            val selected = season.number == selectedSeason
+                            val interaction = remember(season.number) { MutableInteractionSource() }
+                            val focused by interaction.collectIsFocusedAsState()
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (selected) Color(0xFF9C6BFF) else Color(0xFF16222E))
+                                    .border(
+                                        width = if (focused) 2.dp else 0.dp,
+                                        color = if (focused) Color.White else Color.Transparent,
+                                        shape = RoundedCornerShape(6.dp)
+                                    )
+                                    .focusable(interactionSource = interaction)
+                                    .clickable(
+                                        interactionSource = interaction,
+                                        indication = null
+                                    ) {
+                                        selectedSeason = season.number
+                                        loading = true
+                                        error = null
+                                        scope.launch {
+                                            try {
+                                                episodes = repository.getEpisodes(media.id, season.number)
+                                            } catch (t: Throwable) {
+                                                error = t.localizedMessage
+                                                    ?: "No se pudieron cargar los episodios."
+                                            } finally {
+                                                loading = false
+                                            }
+                                        }
+                                    }
+                                    .padding(horizontal = 12.dp, vertical = 7.dp)
+                            ) {
+                                Text(
+                                    text = "Temporada ${season.number}",
+                                    color = if (selected) Color.Black else Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            items(episodes, key = { "${it.season}-${it.episode}" }) { episode ->
+                val interaction = remember(episode) { MutableInteractionSource() }
+                val focused by interaction.collectIsFocusedAsState()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(Color(0xFF0F1722))
+                        .border(
+                            width = if (focused) 2.dp else 1.dp,
+                            color = if (focused) Color(0xFF9C6BFF) else Color(0xFF1B2836),
+                            shape = RoundedCornerShape(7.dp)
+                        )
+                        .focusable(interactionSource = interaction)
+                        .clickable(
+                            interactionSource = interaction,
+                            indication = null
+                        ) {
+                            play(episode.season, episode.episode)
+                        }
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(RoundedCornerShape(5.dp))
+                            .background(Color(0x229C6BFF)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = episode.episode.toString(),
+                            color = Color(0xFFC3A6FF),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = episode.title,
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Temporada ${episode.season} · Episodio ${episode.episode}",
+                            color = Color(0xFF8F9DAA),
+                            fontSize = 9.sp
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = Color(0xFF9C6BFF),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
             item {
                 Text(
-                    text = "Unlimplay muestra sus servidores directamente dentro del iframe. " +
-                        "El reproductor se abre en esta app con el bloqueo de anuncios y las extensiones activas.",
+                    text = "Unlimplay muestra sus servidores dentro del iframe. La app no extrae ni guarda enlaces de video.",
                     color = Color(0xFF66757F),
                     fontSize = 9.sp
                 )

@@ -80,8 +80,18 @@ class VimeusBackupTest {
             type = UnlimplayType.MOVIE
         )
         assertEquals(
-            "https://unlimplay.com/f/embed/movie?tmdb=550",
+            "https://unlimplay.com/f/embed/movie/550",
             movie.embedUrl("https://unlimplay.com/")
+        )
+        val series = UnlimplayMedia(
+            id = 1399,
+            title = "Game of Thrones",
+            posterPath = null,
+            type = UnlimplayType.SERIES
+        )
+        assertEquals(
+            "https://unlimplay.com/f/embed/tv/1399/2/5",
+            series.embedUrl("https://unlimplay.com/", season = 2, episode = 5)
         )
         assertEquals(
             "unlimplay:series:1399",

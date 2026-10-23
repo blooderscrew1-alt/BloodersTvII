@@ -229,7 +229,7 @@ fun UnlimplaySettingsContent(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "El embed usa /f/embed/{tipo}?tmdb={id}; los servidores aparecen dentro del iframe.",
+                            text = "Embed: /f/embed/movie/{id} y /f/embed/tv/{id}/{temporada}/{episodio}.",
                             color = Color(0xFF66757F),
                             fontSize = 9.sp
                         )

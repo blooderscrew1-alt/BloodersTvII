@@ -40,9 +40,28 @@ data class UnlimplayMedia(
 
     fun watchKey(): String = "unlimplay:${type.path}:$id"
 
-    fun embedUrl(baseUrl: String): String =
-        "${baseUrl.trimEnd('/')}/f/embed/${type.path}?tmdb=$id"
+    /** Mirrors the working example: movies use /movie/{id}; series use /tv/{id}/{season}/{episode}. */
+    fun embedUrl(baseUrl: String, season: Int? = null, episode: Int? = null): String {
+        val base = baseUrl.trimEnd('/')
+        return if (type == UnlimplayType.MOVIE) {
+            "$base/f/embed/movie/$id"
+        } else {
+            "$base/f/embed/tv/$id/${season ?: 1}/${episode ?: 1}"
+        }
+    }
 }
+
+data class UnlimplaySeason(
+    val number: Int,
+    val name: String,
+    val episodeCount: Int
+)
+
+data class UnlimplayEpisode(
+    val season: Int,
+    val episode: Int,
+    val title: String
+)
 
 data class UnlimplayPage(
     val items: List<UnlimplayMedia>,
