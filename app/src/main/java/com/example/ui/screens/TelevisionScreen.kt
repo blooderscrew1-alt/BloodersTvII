@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -78,6 +79,7 @@ fun TelevisionScreen(
     modifier: Modifier = Modifier
 ) {
     val allItems by repository.items.collectAsState()
+    val isContentLoaded by repository.isContentLoaded.collectAsState()
     val favorites by repository.favorites.collectAsState()
     val lockedCategories by repository.lockedCategories.collectAsState()
     val parentalPin by repository.parentalPin.collectAsState()
@@ -85,6 +87,22 @@ fun TelevisionScreen(
     // Available categories in live TV
     val liveItems = remember(allItems) {
         allItems.filter { it.type == ItemType.LIVE }
+    }
+
+    if (!isContentLoaded) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(Color(0xFF090E13)),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator(color = primaryColor, strokeWidth = 2.dp)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("Cargando canales...", color = Color(0xFF8F9DAA), fontSize = 12.sp)
+            }
+        }
+        return
     }
 
     if (liveItems.isEmpty()) {

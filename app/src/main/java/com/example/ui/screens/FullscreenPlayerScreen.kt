@@ -123,7 +123,7 @@ fun FullscreenPlayerScreen(
     LaunchedEffect(activeItem) {
         if (activeItem.type != ItemType.LIVE) {
             while (true) {
-                delay(1500)
+                delay(3000)
                 if (duration > 0L) {
                     repository.recordWatchHistory(activeItem, currentPos, duration)
                 }

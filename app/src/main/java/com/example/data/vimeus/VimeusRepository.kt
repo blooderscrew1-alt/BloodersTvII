@@ -80,6 +80,12 @@ class VimeusRepository(context: Context) {
 
     suspend fun getEpisodes(tmdbId: Long): List<VimeusEpisode> = withContext(Dispatchers.IO) {
         if (tmdbId <= 0L) return@withContext emptyList()
+        val now = System.currentTimeMillis()
+        synchronized(episodeCache) {
+            episodeCache[tmdbId]?.let { (timestamp, cached) ->
+                if (now - timestamp < EPISODE_CACHE_TTL_MS) return@withContext cached
+            }
+        }
         val episodes = mutableListOf<VimeusEpisode>()
         var page = 1
         var totalPages = 1
@@ -107,8 +113,12 @@ class VimeusRepository(context: Context) {
             }
             page++
         }
-        episodes.distinctBy { it.season to it.episode }
+        val result = episodes.distinctBy { it.season to it.episode }
             .sortedWith(compareBy({ it.season }, { it.episode }))
+        synchronized(episodeCache) {
+            episodeCache[tmdbId] = System.currentTimeMillis() to result
+        }
+        result
     }
 
     /**
@@ -241,4 +251,9 @@ class VimeusRepository(context: Context) {
         Normalizer.normalize(value, Normalizer.Form.NFD)
             .replace(Regex("\\p{M}+"), "")
             .lowercase(Locale.ROOT)
+
+    companion object {
+        private const val EPISODE_CACHE_TTL_MS = 5 * 60 * 1000L
+        private val episodeCache = mutableMapOf<Long, Pair<Long, List<VimeusEpisode>>>()
+    }
 }

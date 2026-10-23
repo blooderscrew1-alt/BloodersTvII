@@ -69,6 +69,7 @@ fun MoviesScreen(
 ) {
     val allItems by repository.items.collectAsState()
     val history by repository.history.collectAsState()
+    val isContentLoaded by repository.isContentLoaded.collectAsState()
     val nsrHistory by repository.nsrHistory.collectAsState()
     val vimeusHistory by repository.vimeusHistory.collectAsState()
     val watchedNsr by repository.watchedNsr.collectAsState()
@@ -126,7 +127,7 @@ fun MoviesScreen(
         vimeusHistory.filter { it.type == VimeusType.MOVIE }
     }
 
-    if (movies.isEmpty() && movieHistory.isEmpty() && nsrMovieHistory.isEmpty() &&
+    if (isContentLoaded && movies.isEmpty() && movieHistory.isEmpty() && nsrMovieHistory.isEmpty() &&
         vimeusMovieHistory.isEmpty() && nsrState.items.isEmpty() && vimeusState.items.isEmpty() &&
         !nsrState.isLoading && !vimeusState.isLoading &&
         nsrState.error == null && vimeusState.error == null &&
@@ -197,9 +198,10 @@ fun MoviesScreen(
         return
     }
 
-    val categories = remember(movies) {
-        movies.map { it.category }.distinct()
+    val moviesByCategory = remember(movies) {
+        movies.groupBy { it.category }
     }
+    val categories = moviesByCategory.keys.toList()
 
     LazyColumn(
         modifier = modifier
@@ -311,7 +313,7 @@ fun MoviesScreen(
 
         // Sections per category in IPTV list
         categories.take(8).forEach { catName ->
-            val catMovies = movies.filter { it.category == catName }
+            val catMovies = moviesByCategory[catName].orEmpty()
             if (catMovies.isNotEmpty()) {
                 item {
                     Column {

@@ -6,7 +6,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -147,45 +146,47 @@ fun MainApp(
                         primaryColor = primaryColor
                     )
                 } else {
-                    Crossfade(targetState = currentTab, label = "tab_crossfade") { tab ->
-                        when (tab) {
-                            AppTab.TELEVISION -> TelevisionScreen(
-                                repository = repository,
-                                playerManager = playerManager,
-                                onEnterFullscreen = { item ->
-                                    fullscreenItem = item
-                                },
-                                onNavigateToPlaylists = {
-                                    currentTab = AppTab.PLAYLISTS
-                                },
-                                primaryColor = primaryColor
-                            )
-                            AppTab.PELICULAS -> MoviesScreen(
-                                repository = repository,
-                                onPlayItem = { item -> startPlayback(item) },
-                                onNavigateToPlaylists = {
-                                    currentTab = AppTab.PLAYLISTS
-                                },
-                                primaryColor = primaryColor
-                            )
-                            AppTab.SERIES -> SeriesScreen(
-                                repository = repository,
-                                onPlayItem = { item -> startPlayback(item) },
-                                onNavigateToPlaylists = {
-                                    currentTab = AppTab.PLAYLISTS
-                                },
-                                primaryColor = primaryColor
-                            )
-                            AppTab.PLAYLISTS -> PlaylistsScreen(
-                                repository = repository,
-                                primaryColor = primaryColor
-                            )
-                            AppTab.AJUSTES -> SettingsScreen(
-                                repository = repository,
-                                playerManager = playerManager,
-                                primaryColor = primaryColor
-                            )
-                        }
+                    // Direct switch: Crossfade kept both tab trees composed during
+                    // the animation, which reloaded images and dropped frames on
+                    // low-end devices.
+                    val tab = currentTab
+                    when (tab) {
+                        AppTab.TELEVISION -> TelevisionScreen(
+                            repository = repository,
+                            playerManager = playerManager,
+                            onEnterFullscreen = { item ->
+                                fullscreenItem = item
+                            },
+                            onNavigateToPlaylists = {
+                                currentTab = AppTab.PLAYLISTS
+                            },
+                            primaryColor = primaryColor
+                        )
+                        AppTab.PELICULAS -> MoviesScreen(
+                            repository = repository,
+                            onPlayItem = { item -> startPlayback(item) },
+                            onNavigateToPlaylists = {
+                                currentTab = AppTab.PLAYLISTS
+                            },
+                            primaryColor = primaryColor
+                        )
+                        AppTab.SERIES -> SeriesScreen(
+                            repository = repository,
+                            onPlayItem = { item -> startPlayback(item) },
+                            onNavigateToPlaylists = {
+                                currentTab = AppTab.PLAYLISTS
+                            },
+                            primaryColor = primaryColor
+                        )
+                        AppTab.PLAYLISTS -> PlaylistsScreen(
+                            repository = repository,
+                            primaryColor = primaryColor
+                        )
+                        AppTab.AJUSTES -> SettingsScreen(
+                            repository = repository,
+                            playerManager = playerManager,
+                            primaryColor = primaryColor
+                        )
                     }
                 }
             }

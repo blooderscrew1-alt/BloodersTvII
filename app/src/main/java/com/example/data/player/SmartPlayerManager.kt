@@ -204,7 +204,7 @@ class SmartPlayerManager(private val context: Context) {
                     if (d > 0L) _duration.value = d
                     _isPlaying.value = player.isPlaying
                 }
-                delay(500)
+                delay(1000)
             }
         }
     }

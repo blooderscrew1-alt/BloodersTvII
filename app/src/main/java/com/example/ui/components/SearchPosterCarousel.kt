@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -88,14 +89,25 @@ fun SearchPosterCarousel(
             contentPadding = PaddingValues(horizontal = (maxWidth - cardWidth) / 2),
             pageSpacing = 10.dp,
             pageSize = PageSize.Fixed(cardWidth),
-            beyondViewportPageCount = 2,
+            beyondViewportPageCount = 1,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(cardHeight + reflectionHeight - 8.dp)
+                .height(cardHeight + reflectionHeight)
         ) { page ->
-            val relative = (page - pagerState.currentPage) - pagerState.currentPageOffsetFraction
-            val distance = abs(relative).coerceAtMost(1.6f)
-            val selected = distance < 0.55f
+            val selected by remember(page) {
+                derivedStateOf {
+                    abs(
+                        (page - pagerState.currentPage) - pagerState.currentPageOffsetFraction
+                    ) < 0.55f
+                }
+            }
+            val near by remember(page) {
+                derivedStateOf {
+                    abs(
+                        (page - pagerState.currentPage) - pagerState.currentPageOffsetFraction
+                    ) < 1.2f
+                }
+            }
             val interactionSource = remember(page) { MutableInteractionSource() }
             val isFocused by interactionSource.collectIsFocusedAsState()
 
@@ -108,8 +120,11 @@ fun SearchPosterCarousel(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .zIndex((1f - distance).coerceAtLeast(0.1f))
+                    .zIndex(if (selected) 2f else 1f)
                     .graphicsLayer {
+                        val relative =
+                            (page - pagerState.currentPage) - pagerState.currentPageOffsetFraction
+                        val distance = abs(relative).coerceAtMost(1.6f)
                         val scale = 1f - (distance * 0.22f)
                         scaleX = scale
                         scaleY = scale
@@ -249,7 +264,7 @@ fun SearchPosterCarousel(
                         .clip(RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp))
                         .background(Color(0xFF090E13))
                 ) {
-                    if (!items[page].posterUrl.isNullOrBlank()) {
+                    if (near && !items[page].posterUrl.isNullOrBlank()) {
                         AsyncImage(
                             model = items[page].posterUrl,
                             contentDescription = null,

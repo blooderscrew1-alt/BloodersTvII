@@ -126,6 +126,16 @@ El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en A
 - La etiqueta aparece en Películas, Series, la búsqueda global, el historial y los rankings.
 - **Borrar historial** en Ajustes elimina también las marcas de proveedores.
 
+### Rendimiento y fluidez
+
+- Las listas y canales guardados se leen en segundo plano: la primera pantalla aparece sin esperar a parsear miles de canales. Television, Películas, Series y Listas muestran un estado de carga mientras llegan.
+- Las pestañas cambian de forma directa, sin `Crossfade`; antes se mantenían dos árboles de UI y se recargaban imágenes durante la transición.
+- La búsqueda precalcula las tarjetas de pósters con `remember` y el carrusel mueve escala/rotación dentro de `graphicsLayer`, sin recomponer todas las páginas en cada frame.
+- El reflejo solo se dibuja en las tarjetas cercanas al centro y el Pager mantiene una sola página extra a cada lado.
+- Los grupos de categorías se calculan una sola vez (`groupBy`) en lugar de filtrar toda la lista por categoría en cada composición.
+- El reproductor actualiza la posición cada 1 s y guarda el historial cada 3 s, reduciendo recomposiciones y escrituras en equipos lentos.
+- Los episodios de Vimeus se cachean 5 minutos para no repetir la paginación al volver al detalle.
+
 ### Navegación con control remoto / teclado
 
 - Los pósters del carrusel son enfocables: borde blanco al enfocar, izquierda/derecha para recorrerlos y Enter/OK para abrir.
@@ -200,6 +210,7 @@ app/src/main/java/com/example/
 - Vimeus verificado en producción: catálogo de películas, series y anime, detalle de serie con temporadas/episodios, reproducción embed y búsqueda “saul” → “Better Call Saul”.
 - Búsqueda visual verificada con “titanic” y “saul”: carrusel de pósters, orden IPTV → Vimeus → NSRPlay, borde de acento y reflejo.
 - Navegación D-pad verificada en la búsqueda: campo → filtros → carrusel, izquierda/derecha entre pósters y Enter abre el detalle.
+- Arranque en frío medido en el emulador con listas IPTV cargadas: ~1,7 s (`am start -W`), con canales cargados en segundo plano.
 - Respaldo verificado exportando a `Download`, leyendo el JSON e importándolo de vuelta.
 - Búsqueda por slug y por sugerencias verificada con “Chappie” y “saul” (encuentra “Better Call Saul” con póster y episodios).
 - La configuración NSRPlay se probó de extremo a extremo: URL de mock, "Probar conexión" (respuesta real), guardado y apertura del catálogo con esa configuración.

@@ -69,6 +69,7 @@ fun SeriesScreen(
 ) {
     val allItems by repository.items.collectAsState()
     val history by repository.history.collectAsState()
+    val isContentLoaded by repository.isContentLoaded.collectAsState()
     val nsrHistory by repository.nsrHistory.collectAsState()
     val vimeusHistory by repository.vimeusHistory.collectAsState()
     val watchedNsr by repository.watchedNsr.collectAsState()
@@ -128,7 +129,7 @@ fun SeriesScreen(
         vimeusHistory.filter { it.type.section == ItemType.SERIES }
     }
 
-    if (series.isEmpty() && seriesHistory.isEmpty() && nsrSeriesHistory.isEmpty() &&
+    if (isContentLoaded && series.isEmpty() && seriesHistory.isEmpty() && nsrSeriesHistory.isEmpty() &&
         vimeusSeriesHistory.isEmpty() && nsrState.items.isEmpty() &&
         vimeusState.items.isEmpty() && vimeusAnimeState.items.isEmpty() &&
         !nsrState.isLoading && !vimeusState.isLoading && !vimeusAnimeState.isLoading &&
@@ -200,9 +201,10 @@ fun SeriesScreen(
         return
     }
 
-    val categories = remember(series) {
-        series.map { it.category }.distinct()
+    val seriesByCategory = remember(series) {
+        series.groupBy { it.category }
     }
+    val categories = seriesByCategory.keys.toList()
 
     LazyColumn(
         modifier = modifier
@@ -328,7 +330,7 @@ fun SeriesScreen(
 
         // Categories sections
         categories.take(8).forEach { catName ->
-            val catSeries = series.filter { it.category == catName }
+            val catSeries = seriesByCategory[catName].orEmpty()
             if (catSeries.isNotEmpty()) {
                 item {
                     Column {

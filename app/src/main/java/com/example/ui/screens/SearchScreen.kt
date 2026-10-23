@@ -269,6 +269,59 @@ fun SearchScreen(
     val noVimeus = !showVimeus ||
         (vimeusVisibleResults.isEmpty() && !vimeusLoading && vimeusError == null)
 
+    val iptvPosterItems = remember(filteredItems, watchedIds) {
+        filteredItems.map { media ->
+            SearchPosterItem(
+                key = "iptv:${media.id}",
+                title = media.name,
+                posterUrl = media.logoUrl,
+                typeLabel = when (media.type) {
+                    ItemType.LIVE -> "Canal"
+                    ItemType.MOVIE -> "Película"
+                    ItemType.SERIES -> "Serie"
+                },
+                subtitle = media.category,
+                isWatched = watchedIds.contains(media.id)
+            )
+        }
+    }
+
+    val vimeusPosterItems = remember(vimeusVisibleResults, watchedVimeus) {
+        vimeusVisibleResults.map { media ->
+            SearchPosterItem(
+                key = "vimeus:${media.id}",
+                title = media.title,
+                posterUrl = media.posterUrl,
+                typeLabel = when (media.type) {
+                    VimeusType.MOVIE -> "Película"
+                    VimeusType.SERIES -> "Serie"
+                    VimeusType.ANIME -> "Anime"
+                },
+                subtitle = listOfNotNull(
+                    media.year,
+                    media.totalSeasons.takeIf { it > 0 }?.let { "${it} temp." }
+                ).joinToString(" · ").ifBlank { null },
+                isWatched = watchedVimeus.contains(media.watchKey())
+            )
+        }
+    }
+
+    val nsrPosterItems = remember(nsrVisibleResults, watchedNsr) {
+        nsrVisibleResults.map { media ->
+            SearchPosterItem(
+                key = "nsr:${media.slug}",
+                title = media.title,
+                posterUrl = media.posterOrNull,
+                typeLabel = if (media.type == NsrMediaType.SERIES) "Serie" else "Película",
+                subtitle = listOfNotNull(
+                    media.year,
+                    media.rating?.let { "★ $it" }
+                ).joinToString(" · ").ifBlank { null },
+                isWatched = watchedNsr.contains(media.watchKey())
+            )
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -562,20 +615,7 @@ fun SearchScreen(
                     }
                     item {
                         SearchPosterCarousel(
-                            items = filteredItems.map { media ->
-                                SearchPosterItem(
-                                    key = "iptv:${media.id}",
-                                    title = media.name,
-                                    posterUrl = media.logoUrl,
-                                    typeLabel = when (media.type) {
-                                        ItemType.LIVE -> "Canal"
-                                        ItemType.MOVIE -> "Película"
-                                        ItemType.SERIES -> "Serie"
-                                    },
-                                    subtitle = media.category,
-                                    isWatched = watchedIds.contains(media.id)
-                                )
-                            },
+                            items = iptvPosterItems,
                             accentColor = NsrBadgeColor,
                             onOpen = { index -> onPlayItem(filteredItems[index]) }
                         )
@@ -669,23 +709,7 @@ fun SearchScreen(
                     if (vimeusVisibleResults.isNotEmpty()) {
                         item {
                             SearchPosterCarousel(
-                                items = vimeusVisibleResults.map { media ->
-                                    SearchPosterItem(
-                                        key = "vimeus:${media.id}",
-                                        title = media.title,
-                                        posterUrl = media.posterUrl,
-                                        typeLabel = when (media.type) {
-                                            VimeusType.MOVIE -> "Película"
-                                            VimeusType.SERIES -> "Serie"
-                                            VimeusType.ANIME -> "Anime"
-                                        },
-                                        subtitle = listOfNotNull(
-                                            media.year,
-                                            media.totalSeasons.takeIf { it > 0 }?.let { "${it} temp." }
-                                        ).joinToString(" · ").ifBlank { null },
-                                        isWatched = watchedVimeus.contains(media.watchKey())
-                                    )
-                                },
+                                items = vimeusPosterItems,
                                 accentColor = VimeusBadgeColor,
                                 onOpen = { index ->
                                     keyboard?.hide()
@@ -783,19 +807,7 @@ fun SearchScreen(
                     if (nsrVisibleResults.isNotEmpty()) {
                         item {
                             SearchPosterCarousel(
-                                items = nsrVisibleResults.map { media ->
-                                    SearchPosterItem(
-                                        key = "nsr:${media.slug}",
-                                        title = media.title,
-                                        posterUrl = media.posterOrNull,
-                                        typeLabel = if (media.type == NsrMediaType.SERIES) "Serie" else "Película",
-                                        subtitle = listOfNotNull(
-                                            media.year,
-                                            media.rating?.let { "★ $it" }
-                                        ).joinToString(" · ").ifBlank { null },
-                                        isWatched = watchedNsr.contains(media.watchKey())
-                                    )
-                                },
+                                items = nsrPosterItems,
                                 accentColor = NsrBadgeColor,
                                 onOpen = { index ->
                                     keyboard?.hide()

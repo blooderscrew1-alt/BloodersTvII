@@ -57,6 +57,9 @@ class IptvRepository(private val context: Context) {
     private val _vimeusHistory = MutableStateFlow<List<VimeusHistoryItem>>(emptyList())
     val vimeusHistory: StateFlow<List<VimeusHistoryItem>> = _vimeusHistory.asStateFlow()
 
+    private val _isContentLoaded = MutableStateFlow(false)
+    val isContentLoaded: StateFlow<Boolean> = _isContentLoaded.asStateFlow()
+
     private val _favorites = MutableStateFlow<Set<String>>(emptySet())
     val favorites: StateFlow<Set<String>> = _favorites.asStateFlow()
 
@@ -79,7 +82,15 @@ class IptvRepository(private val context: Context) {
         loadWatchedNsr()
         loadNsrHistory()
         loadVimeus()
-        loadItems()
+        // Persisted channel lists can contain thousands of entries. Parse them
+        // off the main thread so the first frame and tab switch stay fluid.
+        repoScope.launch {
+            try {
+                loadItems()
+            } finally {
+                _isContentLoaded.value = true
+            }
+        }
     }
 
     private fun loadVimeus() {
@@ -291,11 +302,12 @@ class IptvRepository(private val context: Context) {
                 t.printStackTrace()
             }
         }
-        _playlists.value = userPlaylists
+        val mergedPlaylists = (userPlaylists + _playlists.value).distinctBy { it.id }
+        _playlists.value = mergedPlaylists
 
         // 2. Stream restore saved user channels from disk
         val userChannels = loadChannelsFromDisk()
-        _items.value = userChannels
+        _items.value = (userChannels + _items.value).distinctBy { it.id }
     }
 
     private fun loadChannelsFromDisk(): List<PlaylistItem> {

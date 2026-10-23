@@ -86,6 +86,7 @@ fun PlaylistsScreen(
 ) {
     val context = LocalContext.current
     val playlists by repository.playlists.collectAsState()
+    val isContentLoaded by repository.isContentLoaded.collectAsState()
     val scope = rememberCoroutineScope()
 
     var showAddDialog by remember { mutableStateOf(false) }
@@ -314,7 +315,20 @@ fun PlaylistsScreen(
         }
 
         // List of registered playlists
-        if (playlists.isEmpty()) {
+        if (!isContentLoaded) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = primaryColor, strokeWidth = 2.dp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("Cargando listas...", color = Color(0xFF8F9DAA), fontSize = 12.sp)
+                }
+            }
+        } else if (playlists.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
