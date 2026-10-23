@@ -15,6 +15,7 @@ Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propia
 - **Reproductor web** (`PlayerWebActivity`): WebView con bloqueo de anuncios y pop-ups, pantalla completa HTML5, control de velocidad, modo escritorio, Picture-in-Picture y pantalla siempre encendida.
 - **Extensiones Chrome/Edge** en el reproductor: paquetes `.zip` o `.crx` con content scripts (JS/CSS), background/service worker y reglas estáticas `declarativeNetRequest` (block, redirect, upgradeScheme). Se gestionan desde **Ajustes → Extensiones**.
 - **Vimeus**: catálogo de películas, series y anime con paginación, búsqueda por título, detalle con temporadas/episodios y reproducción embed. Se configura desde **Ajustes → Vimeus**.
+- **Búsqueda global** con vista tipo cover-flow: póster central grande, laterales inclinados, borde de acento, reflejo y título/progreso sobre la carátula. IPTV, **Vimeus** y NSRPlay aparecen en ese orden.
 - **Continuar viendo**: cuadrícula dinámica basada en el historial de IPTV **y NSRPlay/Vimeus**, con carátula, progreso, tiempo restante y reanudación desde el punto guardado. Sustituye al banner promocional.
 - **Respaldo**: exporta, comparte o importa listas M3U/Xtream y ajustes entre dispositivos desde **Ajustes → Respaldo**.
 - **Etiquetas `VISTO`** en tarjetas de películas/series y en la búsqueda. Se basan en el historial IPTV y en un registro persistente para NSRPlay.
@@ -125,6 +126,14 @@ El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en A
 - La etiqueta aparece en Películas, Series, la búsqueda global, el historial y los rankings.
 - **Borrar historial** en Ajustes elimina también las marcas de proveedores.
 
+### Búsqueda visual
+
+- Los resultados se muestran como un carrusel de pósters (Pager) en lugar de filas de lista.
+- La tarjeta central se agranda, recibe el color del proveedor, muestra el título y un reflejo debajo; las laterales se reducen e inclinan.
+- Tocar una tarjeta lateral la centra; tocar la central abre el detalle IPTV/Vimeus/NSRPlay.
+- El orden de las secciones es **IPTV → Vimeus → NSRPlay**.
+- La vista es estática (sin animaciones de fondo ni blur) para no perder fluidez en gama baja.
+
 ### Extensiones Chrome/Edge
 
 - Pestaña **Extensiones** en Ajustes: instalar `.zip`/`.crx`, activar/desactivar y eliminar.
@@ -182,6 +191,7 @@ app/src/main/java/com/example/
 - UI probada en 1920×1080 (tablet/TV), 1080×1920 a 420 dpi (teléfono vertical) y 1920×1080 a 420 dpi (teléfono horizontal): cabecera, botón de listas, diálogo de alta y reproductor web.
 - NSRPlay verificado en producción dentro de Películas (badges `NSRPLAY`) y en la búsqueda global.
 - Vimeus verificado en producción: catálogo de películas, series y anime, detalle de serie con temporadas/episodios, reproducción embed y búsqueda “saul” → “Better Call Saul”.
+- Búsqueda visual verificada con “titanic” y “saul”: carrusel de pósters, orden IPTV → Vimeus → NSRPlay, borde de acento y reflejo.
 - Respaldo verificado exportando a `Download`, leyendo el JSON e importándolo de vuelta.
 - Búsqueda por slug y por sugerencias verificada con “Chappie” y “saul” (encuentra “Better Call Saul” con póster y episodios).
 - La configuración NSRPlay se probó de extremo a extremo: URL de mock, "Probar conexión" (respuesta real), guardado y apertura del catálogo con esa configuración.

@@ -74,6 +74,8 @@ import com.example.data.vimeus.VimeusMedia
 import com.example.data.vimeus.VimeusRepository
 import com.example.data.vimeus.VimeusType
 import com.example.ui.components.NsrBadgeColor
+import com.example.ui.components.SearchPosterCarousel
+import com.example.ui.components.SearchPosterItem
 import com.example.ui.components.VimeusBadgeColor
 import kotlinx.coroutines.launch
 
@@ -437,7 +439,7 @@ fun SearchScreen(
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
-                        text = "Busca canales de tus listas y películas o series de NSRPlay. Pulsa la lupa para incluir NSRPlay.",
+                        text = "Busca canales de tus listas y películas o series de NSRPlay y Vimeus. Pulsa la lupa para incluir los proveedores.",
                         color = Color(0xFF8F9DAA),
                         fontSize = 12.sp,
                         textAlign = TextAlign.Center
@@ -507,29 +509,9 @@ fun SearchScreen(
             ) {
                 if (filteredItems.isNotEmpty()) {
                     item {
-                        Text(
-                            text = "En tus listas IPTV · ${filteredItems.size} resultados",
-                            color = Color(0xFF8F9DAA),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 2.dp)
-                        )
-                    }
-                    items(filteredItems, key = { "iptv:" + it.id }) { item ->
-                        IptvSearchResultCard(
-                            item = item,
-                            isWatched = watchedIds.contains(item.id),
-                            primaryColor = primaryColor,
-                            onClick = { onPlayItem(item) }
-                        )
-                    }
-                }
-
-                if (showNsr) {
-                    item {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 8.dp)
+                            modifier = Modifier.padding(bottom = 2.dp)
                         ) {
                             Box(
                                 modifier = Modifier
@@ -538,7 +520,7 @@ fun SearchScreen(
                                     .padding(horizontal = 5.dp, vertical = 2.dp)
                             ) {
                                 Text(
-                                    text = "NSRPLAY",
+                                    text = "IPTV",
                                     color = Color.Black,
                                     fontSize = 8.sp,
                                     fontWeight = FontWeight.Black
@@ -546,78 +528,31 @@ fun SearchScreen(
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (nsrVisibleResults.isNotEmpty()) {
-                                    "NSRPlay · ${nsrVisibleResults.size} resultados"
-                                } else {
-                                    "NSRPlay"
-                                },
+                                text = "En tus listas IPTV · ${filteredItems.size} resultados",
                                 color = Color.White,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
-                            Spacer(modifier = Modifier.weight(1f))
-                            TextButton(onClick = { submitNsrSearch() }) {
-                                Text("Actualizar", color = primaryColor, fontSize = 10.sp)
-                            }
                         }
                     }
-
-                    if (nsrLoading) {
-                        item {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(vertical = 10.dp)
-                            ) {
-                                CircularProgressIndicator(
-                                    color = primaryColor,
-                                    strokeWidth = 2.dp,
-                                    modifier = Modifier.size(18.dp)
+                    item {
+                        SearchPosterCarousel(
+                            items = filteredItems.map { media ->
+                                SearchPosterItem(
+                                    key = "iptv:${media.id}",
+                                    title = media.name,
+                                    posterUrl = media.logoUrl,
+                                    typeLabel = when (media.type) {
+                                        ItemType.LIVE -> "Canal"
+                                        ItemType.MOVIE -> "Película"
+                                        ItemType.SERIES -> "Serie"
+                                    },
+                                    subtitle = media.category,
+                                    isWatched = watchedIds.contains(media.id)
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Buscando en NSRPlay...",
-                                    color = Color(0xFF8F9DAA),
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-                    }
-
-                    nsrError?.let { message ->
-                        item {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = message,
-                                    color = Color(0xFFFF8A96),
-                                    fontSize = 11.sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                TextButton(onClick = { submitNsrSearch() }) {
-                                    Text("Reintentar", color = primaryColor, fontSize = 10.sp)
-                                }
-                            }
-                        }
-                    }
-
-                    if (!nsrLoading && nsrError == null && nsrVisibleResults.isEmpty()) {
-                        item {
-                            Text(
-                                text = "NSRPlay no devolvió títulos para \"$nsrSubmittedQuery\".",
-                                color = Color(0xFF7F8F9F),
-                                fontSize = 10.sp
-                            )
-                        }
-                    }
-
-                    items(nsrVisibleResults, key = { "nsr:" + it.slug }) { media ->
-                        NsrSearchResultCard(
-                            media = media,
-                            isWatched = watchedNsr.contains(media.watchKey()),
-                            primaryColor = primaryColor,
-                            onClick = {
-                                keyboard?.hide()
-                                selectedNsr = media
-                            }
+                            },
+                            accentColor = NsrBadgeColor,
+                            onOpen = { index -> onPlayItem(filteredItems[index]) }
                         )
                     }
                 }
@@ -626,7 +561,7 @@ fun SearchScreen(
                     item {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 8.dp)
+                            modifier = Modifier.padding(top = 10.dp)
                         ) {
                             Box(
                                 modifier = Modifier
@@ -706,397 +641,147 @@ fun SearchScreen(
                         }
                     }
 
-                    items(vimeusVisibleResults, key = { "vimeus:" + it.id }) { media ->
-                        VimeusSearchResultCard(
-                            media = media,
-                            isWatched = watchedVimeus.contains(media.watchKey()),
-                            primaryColor = primaryColor,
-                            onClick = {
-                                keyboard?.hide()
-                                selectedVimeus = media
+                    if (vimeusVisibleResults.isNotEmpty()) {
+                        item {
+                            SearchPosterCarousel(
+                                items = vimeusVisibleResults.map { media ->
+                                    SearchPosterItem(
+                                        key = "vimeus:${media.id}",
+                                        title = media.title,
+                                        posterUrl = media.posterUrl,
+                                        typeLabel = when (media.type) {
+                                            VimeusType.MOVIE -> "Película"
+                                            VimeusType.SERIES -> "Serie"
+                                            VimeusType.ANIME -> "Anime"
+                                        },
+                                        subtitle = listOfNotNull(
+                                            media.year,
+                                            media.totalSeasons.takeIf { it > 0 }?.let { "${it} temp." }
+                                        ).joinToString(" · ").ifBlank { null },
+                                        isWatched = watchedVimeus.contains(media.watchKey())
+                                    )
+                                },
+                                accentColor = VimeusBadgeColor,
+                                onOpen = { index ->
+                                    keyboard?.hide()
+                                    selectedVimeus = vimeusVisibleResults[index]
+                                }
+                            )
+                        }
+                    }
+                }
+
+                if (showNsr) {
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 10.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(NsrBadgeColor)
+                                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "NSRPLAY",
+                                    color = Color.Black,
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Black
+                                )
                             }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun IptvSearchResultCard(
-    item: PlaylistItem,
-    isWatched: Boolean,
-    primaryColor: Color,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF101923))
-            .border(1.dp, Color(0xFF1B2836), RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Thumbnail or Icon
-        Box(
-            modifier = Modifier
-                .size(width = 54.dp, height = 48.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(Color(0xFF172432)),
-            contentAlignment = Alignment.Center
-        ) {
-            if (!item.logoUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = item.logoUrl,
-                    contentDescription = item.name,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(4.dp)
-                )
-            } else {
-                Icon(
-                    imageVector = when (item.type) {
-                        ItemType.LIVE -> Icons.Default.Tv
-                        ItemType.MOVIE -> Icons.Default.Movie
-                        ItemType.SERIES -> Icons.Default.Tv
-                    },
-                    contentDescription = null,
-                    tint = primaryColor,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // Info
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.name,
-                color = Color.White,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Type badge
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(
-                            when (item.type) {
-                                ItemType.LIVE -> primaryColor.copy(alpha = 0.2f)
-                                ItemType.MOVIE -> Color(0xFF00E5FF).copy(alpha = 0.2f)
-                                ItemType.SERIES -> Color(0xFFFF9100).copy(alpha = 0.2f)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (nsrVisibleResults.isNotEmpty()) {
+                                    "NSRPlay · ${nsrVisibleResults.size} resultados"
+                                } else {
+                                    "NSRPlay"
+                                },
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            TextButton(onClick = { submitNsrSearch() }) {
+                                Text("Actualizar", color = primaryColor, fontSize = 10.sp)
                             }
-                        )
-                        .padding(horizontal = 4.dp, vertical = 1.dp)
-                ) {
-                    Text(
-                        text = when (item.type) {
-                            ItemType.LIVE -> "EN VIVO"
-                            ItemType.MOVIE -> "PELÍCULA"
-                            ItemType.SERIES -> "SERIE"
-                        },
-                        color = when (item.type) {
-                            ItemType.LIVE -> primaryColor
-                            ItemType.MOVIE -> Color(0xFF00E5FF)
-                            ItemType.SERIES -> Color(0xFFFF9100)
-                        },
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(6.dp))
-
-                if (isWatched) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(primaryColor)
-                            .padding(horizontal = 5.dp, vertical = 1.dp)
-                    ) {
-                        Text(
-                            text = "VISTO",
-                            color = Color.Black,
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Black
-                        )
+                        }
                     }
-                    Spacer(modifier = Modifier.width(6.dp))
+
+                    if (nsrLoading) {
+                        item {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(vertical = 10.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    color = primaryColor,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Buscando en NSRPlay...",
+                                    color = Color(0xFF8F9DAA),
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+
+                    nsrError?.let { message ->
+                        item {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = message,
+                                    color = Color(0xFFFF8A96),
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextButton(onClick = { submitNsrSearch() }) {
+                                    Text("Reintentar", color = primaryColor, fontSize = 10.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    if (!nsrLoading && nsrError == null && nsrVisibleResults.isEmpty()) {
+                        item {
+                            Text(
+                                text = "NSRPlay no devolvió títulos para \"$nsrSubmittedQuery\".",
+                                color = Color(0xFF7F8F9F),
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+
+                    if (nsrVisibleResults.isNotEmpty()) {
+                        item {
+                            SearchPosterCarousel(
+                                items = nsrVisibleResults.map { media ->
+                                    SearchPosterItem(
+                                        key = "nsr:${media.slug}",
+                                        title = media.title,
+                                        posterUrl = media.posterOrNull,
+                                        typeLabel = if (media.type == NsrMediaType.SERIES) "Serie" else "Película",
+                                        subtitle = listOfNotNull(
+                                            media.year,
+                                            media.rating?.let { "★ $it" }
+                                        ).joinToString(" · ").ifBlank { null },
+                                        isWatched = watchedNsr.contains(media.watchKey())
+                                    )
+                                },
+                                accentColor = NsrBadgeColor,
+                                onOpen = { index ->
+                                    keyboard?.hide()
+                                    selectedNsr = nsrVisibleResults[index]
+                                }
+                            )
+                        }
+                    }
                 }
-
-                Text(
-                    text = item.category,
-                    color = Color(0xFF8F9DAA),
-                    fontSize = 11.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
             }
-        }
-
-        // Play Button Action
-        Box(
-            modifier = Modifier
-                .size(34.dp)
-                .clip(CircleShape)
-                .background(primaryColor),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = "Reproducir",
-                tint = Color.Black,
-                modifier = Modifier.size(18.dp)
-            )
         }
     }
 }
 
-@Composable
-private fun NsrSearchResultCard(
-    media: NsrMedia,
-    isWatched: Boolean,
-    primaryColor: Color,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF101923))
-            .border(1.dp, Color(0xFF1B2836), RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(width = 54.dp, height = 48.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(Color(0xFF172432)),
-            contentAlignment = Alignment.Center
-        ) {
-            if (media.posterOrNull != null) {
-                AsyncImage(
-                    model = media.posterOrNull,
-                    contentDescription = media.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Icon(
-                    imageVector = if (media.type == NsrMediaType.MOVIE) Icons.Default.Movie
-                    else Icons.Default.Tv,
-                    contentDescription = null,
-                    tint = NsrBadgeColor,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = media.title,
-                color = Color.White,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(3.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(NsrBadgeColor)
-                        .padding(horizontal = 4.dp, vertical = 1.dp)
-                ) {
-                    Text(
-                        text = "NSRPLAY",
-                        color = Color.Black,
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(6.dp))
-
-                if (isWatched) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(primaryColor)
-                            .padding(horizontal = 5.dp, vertical = 1.dp)
-                    ) {
-                        Text(
-                            text = "VISTO",
-                            color = Color.Black,
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(6.dp))
-                }
-
-                Text(
-                    text = listOfNotNull(
-                        media.year,
-                        media.rating?.let { "★ $it" },
-                        if (media.type == NsrMediaType.SERIES) "Serie" else "Película"
-                    ).joinToString(" · "),
-                    color = Color(0xFF8F9DAA),
-                    fontSize = 10.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .size(34.dp)
-                .clip(CircleShape)
-                .background(NsrBadgeColor),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = "Ver servidores",
-                tint = Color.Black,
-                modifier = Modifier.size(18.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun VimeusSearchResultCard(
-    media: VimeusMedia,
-    isWatched: Boolean,
-    primaryColor: Color,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF101923))
-            .border(1.dp, Color(0xFF1B2836), RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(width = 54.dp, height = 48.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(Color(0xFF172432)),
-            contentAlignment = Alignment.Center
-        ) {
-            if (!media.posterUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = media.posterUrl,
-                    contentDescription = media.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Icon(
-                    imageVector = if (media.type == VimeusType.MOVIE) Icons.Default.Movie
-                    else Icons.Default.Tv,
-                    contentDescription = null,
-                    tint = VimeusBadgeColor,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = media.title,
-                color = Color.White,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(3.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(VimeusBadgeColor)
-                        .padding(horizontal = 4.dp, vertical = 1.dp)
-                ) {
-                    Text(
-                        text = "VIMEUS",
-                        color = Color.Black,
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                }
-                Spacer(modifier = Modifier.width(6.dp))
-                if (isWatched) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(primaryColor)
-                            .padding(horizontal = 5.dp, vertical = 1.dp)
-                    ) {
-                        Text(
-                            text = "VISTO",
-                            color = Color.Black,
-                            fontSize = 8.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(6.dp))
-                }
-                Text(
-                    text = listOfNotNull(
-                        media.year,
-                        media.totalSeasons.takeIf { it > 0 }?.let { "$it temp." },
-                        if (media.type == VimeusType.MOVIE) "Película" else "Serie"
-                    ).joinToString(" · "),
-                    color = Color(0xFF8F9DAA),
-                    fontSize = 10.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .size(34.dp)
-                .clip(CircleShape)
-                .background(VimeusBadgeColor),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = "Abrir Vimeus",
-                tint = Color.Black,
-                modifier = Modifier.size(18.dp)
-            )
-        }
-    }
-}
