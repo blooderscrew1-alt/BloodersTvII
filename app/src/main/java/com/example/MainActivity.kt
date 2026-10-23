@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.example.data.model.PlaylistItem
+import com.example.data.model.ItemType
 import com.example.data.player.SmartPlayerManager
 import com.example.data.repository.IptvRepository
 import com.example.ui.components.AppTab
@@ -86,6 +87,18 @@ fun MainApp(
     var isSearchOpen by remember { mutableStateOf(false) }
     var fullscreenItem by remember { mutableStateOf<PlaylistItem?>(null) }
 
+    // VOD playback resumes where the watch history left it. Live channels start
+    // at the live edge.
+    fun startPlayback(item: PlaylistItem) {
+        val resumePosition = if (item.type != ItemType.LIVE) {
+            repository.history.value.firstOrNull { it.itemId == item.id }?.positionMs ?: 0L
+        } else {
+            0L
+        }
+        playerManager.playStream(item.streamUrl, resumePosition)
+        fullscreenItem = item
+    }
+
     if (fullscreenItem != null) {
         // Fullscreen video player takes over entire screen
         FullscreenPlayerScreen(
@@ -130,10 +143,7 @@ fun MainApp(
                 if (isSearchOpen) {
                     SearchScreen(
                         repository = repository,
-                        onPlayItem = { item ->
-                            playerManager.playStream(item.streamUrl)
-                            fullscreenItem = item
-                        },
+                        onPlayItem = { item -> startPlayback(item) },
                         primaryColor = primaryColor
                     )
                 } else {
@@ -152,10 +162,7 @@ fun MainApp(
                             )
                             AppTab.PELICULAS -> MoviesScreen(
                                 repository = repository,
-                                onPlayItem = { item ->
-                                    playerManager.playStream(item.streamUrl)
-                                    fullscreenItem = item
-                                },
+                                onPlayItem = { item -> startPlayback(item) },
                                 onNavigateToPlaylists = {
                                     currentTab = AppTab.PLAYLISTS
                                 },
@@ -163,10 +170,7 @@ fun MainApp(
                             )
                             AppTab.SERIES -> SeriesScreen(
                                 repository = repository,
-                                onPlayItem = { item ->
-                                    playerManager.playStream(item.streamUrl)
-                                    fullscreenItem = item
-                                },
+                                onPlayItem = { item -> startPlayback(item) },
                                 onNavigateToPlaylists = {
                                     currentTab = AppTab.PLAYLISTS
                                 },

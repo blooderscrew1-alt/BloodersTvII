@@ -14,6 +14,7 @@ Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propia
   - cada servidor abre el **reproductor web unificado** basado en Serchwebview.
 - **Reproductor web** (`PlayerWebActivity`): WebView con bloqueo de anuncios y pop-ups, pantalla completa HTML5, control de velocidad, modo escritorio, Picture-in-Picture y pantalla siempre encendida.
 - **Extensiones Chrome/Edge** en el reproductor: paquetes `.zip` o `.crx` con content scripts (JS/CSS), background/service worker y reglas estáticas `declarativeNetRequest` (block, redirect, upgradeScheme). Se gestionan desde **Ajustes → Extensiones**.
+- **Continuar viendo**: cuadrícula dinámica basada en el historial, con carátula, progreso, tiempo restante y reanudación desde el punto guardado. Sustituye al banner promocional.
 - **Etiquetas `VISTO`** en tarjetas de películas/series y en la búsqueda. Se basan en el historial IPTV y en un registro persistente para NSRPlay.
 - **Ajustes**: tema, caché/buffer para conexiones lentas, PIN parental, historial, NSRPlay y extensiones.
 - **Sin Firebase, Room, Retrofit, Moshi ni KSP**: se retiraron dependencias que el código no usaba para reducir tamaño, arranque y tiempo de compilación.
@@ -104,6 +105,14 @@ El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en A
 - Chips de búsqueda en `LazyRow` para que nunca se corten.
 - Hero banner con altura proporcional al ancho (170–320 dp) en lugar de 230 dp fijos.
 - Campos de búsqueda con ancho máximo en pantallas grandes.
+
+### Continuar viendo
+
+- El banner promocional se reemplazó por una **cuadrícula adaptativa** (1–5 columnas según el ancho) con los últimos 8 títulos del historial.
+- Cada tarjeta muestra carátula 16:9, tipo, progreso, porcentaje y tiempo restante.
+- Al pulsarla, el reproductor arranca en la **posición guardada**; no vuelve al inicio.
+- La posición se actualiza cada 500 ms en memoria y el historial se persiste cada 1,5 s para no castigar el almacenamiento en equipos de gama baja.
+- Al cambiar de canal/película dentro del reproductor también se reanuda el título si tenía progreso.
 
 ### Etiquetas de contenido visto
 

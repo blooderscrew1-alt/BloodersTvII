@@ -19,9 +19,16 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import com.example.data.model.BufferMode
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.io.File
 
 @OptIn(UnstableApi::class)
@@ -66,6 +73,8 @@ class SmartPlayerManager(private val context: Context) {
     }
 
     private var exoPlayer: ExoPlayer? = null
+    private val progressScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var progressJob: Job? = null
 
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
@@ -180,6 +189,24 @@ class SmartPlayerManager(private val context: Context) {
         player.setMediaItem(mediaItem, startPositionMs)
         player.prepare()
         player.playWhenReady = autoPlay
+        _currentPosition.value = startPositionMs
+        startProgressUpdates()
+    }
+
+    private fun startProgressUpdates() {
+        progressJob?.cancel()
+        progressJob = progressScope.launch {
+            while (isActive) {
+                val player = exoPlayer
+                if (player != null) {
+                    _currentPosition.value = player.currentPosition.coerceAtLeast(0L)
+                    val d = player.duration
+                    if (d > 0L) _duration.value = d
+                    _isPlaying.value = player.isPlaying
+                }
+                delay(500)
+            }
+        }
     }
 
     fun togglePlayPause() {
@@ -203,6 +230,8 @@ class SmartPlayerManager(private val context: Context) {
     }
 
     fun releasePlayer() {
+        progressJob?.cancel()
+        progressJob = null
         exoPlayer?.release()
         exoPlayer = null
         _isPlaying.value = false

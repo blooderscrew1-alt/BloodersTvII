@@ -102,16 +102,32 @@ fun FullscreenPlayerScreen(
     var showChannelDrawer by remember { mutableStateOf(false) }
     var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
 
+    fun switchTo(item: PlaylistItem) {
+        val resumePosition = if (item.type != ItemType.LIVE) {
+            repository.history.value.firstOrNull { it.itemId == item.id }?.positionMs ?: 0L
+        } else {
+            0L
+        }
+        activeItem = item
+        playerManager.playStream(item.streamUrl, resumePosition)
+    }
+
     // Related channels in same category
     val channelList = remember(allItems, activeItem) {
         allItems.filter { it.type == activeItem.type && it.category == activeItem.category }
             .ifEmpty { allItems.filter { it.type == activeItem.type } }
     }
 
-    // Auto record watch history periodically
-    LaunchedEffect(activeItem, currentPos) {
-        if (activeItem.type != ItemType.LIVE && duration > 0L) {
-            repository.recordWatchHistory(activeItem, currentPos, duration)
+    // Auto record watch history periodically. Throttled so a 500 ms position
+    // tick does not write SharedPreferences twice per second.
+    LaunchedEffect(activeItem) {
+        if (activeItem.type != ItemType.LIVE) {
+            while (true) {
+                delay(1500)
+                if (duration > 0L) {
+                    repository.recordWatchHistory(activeItem, currentPos, duration)
+                }
+            }
         }
     }
 
@@ -149,8 +165,7 @@ fun FullscreenPlayerScreen(
                             val idx = channelList.indexOfFirst { it.id == activeItem.id }
                             if (idx != -1 && idx > 0) {
                                 val next = channelList[idx - 1]
-                                activeItem = next
-                                playerManager.playStream(next.streamUrl)
+                                switchTo(next)
                             }
                             showControls = true
                             true
@@ -160,8 +175,7 @@ fun FullscreenPlayerScreen(
                             val idx = channelList.indexOfFirst { it.id == activeItem.id }
                             if (idx != -1 && idx < channelList.size - 1) {
                                 val prev = channelList[idx + 1]
-                                activeItem = prev
-                                playerManager.playStream(prev.streamUrl)
+                                switchTo(prev)
                             }
                             showControls = true
                             true
@@ -476,8 +490,7 @@ fun FullscreenPlayerScreen(
                                     .clip(RoundedCornerShape(6.dp))
                                     .background(if (isSelected) primaryColor else Color(0xFF131E28))
                                     .clickable {
-                                        activeItem = ch
-                                        playerManager.playStream(ch.streamUrl)
+                                        switchTo(ch)
                                         showChannelDrawer = false
                                     }
                                     .padding(horizontal = 10.dp, vertical = 8.dp),

@@ -49,7 +49,7 @@ import com.example.data.nsrplay.NsrMediaType
 import com.example.data.nsrplay.NsrPlayCatalogCache
 import com.example.data.nsrplay.NsrPlayRepository
 import com.example.data.repository.IptvRepository
-import com.example.ui.components.HeroBanner
+import com.example.ui.components.ContinueWatchingGrid
 import com.example.ui.components.NsrPlayRow
 import com.example.ui.components.NumberedPosterCard
 import com.example.ui.components.StandardPosterCard
@@ -95,7 +95,7 @@ fun MoviesScreen(
         history.filter { it.type == ItemType.MOVIE }
     }
 
-    if (movies.isEmpty() && nsrState.items.isEmpty() && !nsrState.isLoading &&
+    if (movies.isEmpty() && movieHistory.isEmpty() && nsrState.items.isEmpty() && !nsrState.isLoading &&
         nsrState.error == null && nsrState.loadedAt > 0L
     ) {
         Box(
@@ -163,9 +163,6 @@ fun MoviesScreen(
         return
     }
 
-    val heroMovie = remember(movies) { movies.firstOrNull() }
-
-    // Group remaining movies by category
     val categories = remember(movies) {
         movies.map { it.category }.distinct()
     }
@@ -177,65 +174,24 @@ fun MoviesScreen(
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Hero Banner
-        if (heroMovie != null) {
-            item {
-                HeroBanner(
-                    item = heroMovie,
-                    onPlayClick = { onPlayItem(heroMovie) },
-                    isWatched = watchedIds.contains(heroMovie.id),
-                    primaryColor = primaryColor
-                )
-            }
-        }
-
-        // Section: "■ Continuar viendo" (Watch History)
+        // Dynamic "Continuar viendo" grid replaces the old hero banner.
         if (movieHistory.isNotEmpty()) {
             item {
-                Column {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(7.dp)
-                                .background(primaryColor)
-                        )
-                        Text(
-                            text = " Continuar viendo (Historial)",
-                            color = Color.White,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        contentPadding = PaddingValues(end = 16.dp)
-                    ) {
-                        items(movieHistory) { entry ->
-                            StandardPosterCard(
-                                title = entry.title,
-                                posterUrl = entry.posterUrl,
-                                subtitle = "Reanudar",
-                                progressPercent = entry.progressPercent,
-                                isWatched = true,
-                                onClick = {
-                                    val item = PlaylistItem(
-                                        id = entry.itemId,
-                                        name = entry.title,
-                                        streamUrl = entry.streamUrl,
-                                        logoUrl = entry.posterUrl,
-                                        type = entry.type
-                                    )
-                                    onPlayItem(item)
-                                },
-                                primaryColor = primaryColor
+                ContinueWatchingGrid(
+                    history = movieHistory,
+                    primaryColor = primaryColor,
+                    onPlay = { entry ->
+                        onPlayItem(
+                            PlaylistItem(
+                                id = entry.itemId,
+                                name = entry.title,
+                                streamUrl = entry.streamUrl,
+                                logoUrl = entry.posterUrl,
+                                type = entry.type
                             )
-                        }
+                        )
                     }
-                }
+                )
             }
         }
 

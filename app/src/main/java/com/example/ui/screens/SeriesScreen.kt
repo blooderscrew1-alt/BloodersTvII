@@ -49,7 +49,7 @@ import com.example.data.nsrplay.NsrMediaType
 import com.example.data.nsrplay.NsrPlayCatalogCache
 import com.example.data.nsrplay.NsrPlayRepository
 import com.example.data.repository.IptvRepository
-import com.example.ui.components.HeroBanner
+import com.example.ui.components.ContinueWatchingGrid
 import com.example.ui.components.NsrPlayRow
 import com.example.ui.components.NumberedPosterCard
 import com.example.ui.components.StandardPosterCard
@@ -95,7 +95,7 @@ fun SeriesScreen(
         history.filter { it.type == ItemType.SERIES }
     }
 
-    if (series.isEmpty() && nsrState.items.isEmpty() && !nsrState.isLoading &&
+    if (series.isEmpty() && seriesHistory.isEmpty() && nsrState.items.isEmpty() && !nsrState.isLoading &&
         nsrState.error == null && nsrState.loadedAt > 0L
     ) {
         Box(
@@ -163,8 +163,6 @@ fun SeriesScreen(
         return
     }
 
-    val featuredSeries = remember(series) { series.firstOrNull() }
-
     val categories = remember(series) {
         series.map { it.category }.distinct()
     }
@@ -176,59 +174,24 @@ fun SeriesScreen(
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        if (featuredSeries != null) {
-            item {
-                HeroBanner(
-                    item = featuredSeries,
-                    onPlayClick = { onPlayItem(featuredSeries) },
-                    isWatched = watchedIds.contains(featuredSeries.id),
-                    primaryColor = primaryColor
-                )
-            }
-        }
-
+        // Dynamic "Continuar viendo" grid replaces the old hero banner.
         if (seriesHistory.isNotEmpty()) {
             item {
-                Column {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    ) {
-                        Box(modifier = Modifier.size(7.dp).background(primaryColor))
-                        Text(
-                            text = " Continuar viendo (Series)",
-                            color = Color.White,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
+                ContinueWatchingGrid(
+                    history = seriesHistory,
+                    primaryColor = primaryColor,
+                    onPlay = { entry ->
+                        onPlayItem(
+                            PlaylistItem(
+                                id = entry.itemId,
+                                name = entry.title,
+                                streamUrl = entry.streamUrl,
+                                logoUrl = entry.posterUrl,
+                                type = entry.type
+                            )
                         )
                     }
-
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        contentPadding = PaddingValues(end = 16.dp)
-                    ) {
-                        items(seriesHistory) { entry ->
-                            StandardPosterCard(
-                                title = entry.title,
-                                posterUrl = entry.posterUrl,
-                                subtitle = "Reanudar",
-                                progressPercent = entry.progressPercent,
-                                isWatched = true,
-                                onClick = {
-                                    val item = PlaylistItem(
-                                        id = entry.itemId,
-                                        name = entry.title,
-                                        streamUrl = entry.streamUrl,
-                                        logoUrl = entry.posterUrl,
-                                        type = entry.type
-                                    )
-                                    onPlayItem(item)
-                                },
-                                primaryColor = primaryColor
-                            )
-                        }
-                    }
-                }
+                )
             }
         }
 
