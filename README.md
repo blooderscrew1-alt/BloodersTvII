@@ -19,6 +19,7 @@ Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propia
 - **Búsqueda global** con vista tipo cover-flow: póster central grande, laterales inclinados, borde de acento, reflejo y título/progreso sobre la carátula. Orden: IPTV → Vimeus → NSRPlay → **Unlimplay al final**.
 - **Deslizador de tamaño de pósters** a la derecha de los filtros de búsqueda; el tamaño elegido se guarda y se aplica a los tres carruseles (IPTV, Vimeus y NSRPlay).
 - **La barra de búsqueda se oculta al pulsar Enter/OK o la lupa**, para dejar más espacio a los resultados. Un icono de lupa a la izquierda de los filtros la vuelve a mostrar y enfoca el campo.
+- **APK de rendimiento**: la variante `perf` usa R8, eliminación de recursos y firma de depuración; reduce el APK de ~22 MB a ~3 MB y el arranque medido en BlueStacks de ~1.9 s a ~0.4 s.
 - **Historial de series resumido**: “Continuar viendo” muestra solo el último episodio de cada serie, no todos los capítulos; las etiquetas `VISTO` se conservan por separado.
 - **Episodios vistos**: el detalle de la serie y la lista lateral del reproductor marcan con `VISTO` los capítulos ya reproducidos.
 - **Reproductor de series**: muestra una lista lateral de episodios y al terminar un capítulo pasa automáticamente al siguiente.
@@ -109,6 +110,9 @@ Requisitos: JDK 17+ y Android SDK con `platforms;android-36` y `build-tools;36.0
 ./gradlew :app:assembleDebug       # Linux / macOS
 gradlew.bat :app:assembleDebug     # Windows
 # APK: app/build/outputs/apk/debug/app-debug.apk
+
+gradlew.bat :app:assemblePerf      # APK final rápido, R8 + recursos reducidos
+# APK: app/build/outputs/apk/perf/app-perf.apk
 ```
 
 El wrapper usa Gradle 9.3.1. También puedes abrir el proyecto directamente en Android Studio. El proyecto fija `compileSdk 36.1`, `minSdk 24` y `targetSdk 36`.
@@ -243,7 +247,7 @@ app/src/main/java/com/example/
 ## Verificación realizada
 
 - `:app:assembleDebug` compila y genera APK.
-- 31 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`, `NsrPlayConfigStoreTest`, `ExtensionEngineTest`, `WatchedContentTest`, `VimeusBackupTest`).
+- 32 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`, `NsrPlayConfigStoreTest`, `ExtensionEngineTest`, `WatchedContentTest`, `VimeusBackupTest`).
 - UI probada en 1920×1080 (tablet/TV), 1080×1920 a 420 dpi (teléfono vertical) y 1920×1080 a 420 dpi (teléfono horizontal): cabecera, botón de listas, diálogo de alta y reproductor web.
 - NSRPlay verificado en producción dentro de Películas (badges `NSRPLAY`) y en la búsqueda global.
 - Vimeus verificado en producción: catálogo de películas, series y anime, detalle de serie con temporadas/episodios, reproducción embed y búsqueda “saul” → “Better Call Saul”.
