@@ -19,6 +19,8 @@ Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propia
 - **Búsqueda global** con vista tipo cover-flow: póster central grande, laterales inclinados, borde de acento, reflejo y título/progreso sobre la carátula. Orden: IPTV → Vimeus → NSRPlay → **Unlimplay al final**.
 - **Deslizador de tamaño de pósters** a la derecha de los filtros de búsqueda; el tamaño elegido se guarda y se aplica a los tres carruseles (IPTV, Vimeus y NSRPlay).
 - **La barra de búsqueda se oculta al pulsar Enter/OK o la lupa**, para dejar más espacio a los resultados. Un icono de lupa a la izquierda de los filtros la vuelve a mostrar y enfoca el campo.
+- **Búsqueda solo al confirmar**: los resultados de IPTV y proveedores aparecen al pulsar OK/Enter o la lupa, no mientras se escribe.
+- **Inicio más ligero**: las secciones generales de Películas y Series solo cargan sugerencias de NSRPlay; Vimeus y Unlimplay siguen disponibles desde la búsqueda.
 - **Respaldo único**: la primera exportación elige la ubicación; las siguientes reemplazan ese mismo archivo en vez de crear copias con fecha.
 - El respaldo incluye la **edición de categorías**: nombres de lista, categorías renombradas, reclasificación TV/Películas/Series/Adultos y categorías ocultas.
 - **Editor de listas IPTV**: renombrar la lista, copiar su enlace M3U/Xtream, reclasificar toda la lista o una categoría entre TV/Películas/Series/**Adultos**, ocultar/mostrar categorías y renombrarlas.

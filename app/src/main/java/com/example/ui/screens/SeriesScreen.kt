@@ -49,21 +49,15 @@ import com.example.data.nsrplay.NsrMediaType
 import com.example.data.nsrplay.NsrPlayCatalogCache
 import com.example.data.nsrplay.NsrPlayRepository
 import com.example.data.repository.IptvRepository
-import com.example.data.vimeus.VimeusCatalogCache
 import com.example.data.vimeus.VimeusMedia
 import com.example.data.vimeus.VimeusRepository
-import com.example.data.vimeus.VimeusType
-import com.example.data.unlimplay.UnlimplayCatalogCache
 import com.example.data.unlimplay.UnlimplayMedia
 import com.example.data.unlimplay.UnlimplayRepository
 import com.example.data.unlimplay.UnlimplayType
 import com.example.ui.components.ContinueWatchingGrid
 import com.example.ui.components.NsrPlayRow
-import com.example.ui.components.UnlimplayRow
-import com.example.ui.components.VimeusRow
 import com.example.ui.components.NumberedPosterCard
 import com.example.ui.components.StandardPosterCard
-import kotlinx.coroutines.delay
 
 @Composable
 fun SeriesScreen(
@@ -80,8 +74,6 @@ fun SeriesScreen(
     val vimeusHistory by repository.vimeusHistory.collectAsState()
     val unlimplayHistory by repository.unlimplayHistory.collectAsState()
     val watchedNsr by repository.watchedNsr.collectAsState()
-    val watchedVimeus by repository.vimeusWatched.collectAsState()
-    val watchedUnlimplay by repository.unlimplayWatched.collectAsState()
     val watchedIds = remember(history) { history.map { it.itemId }.toSet() }
 
     val context = LocalContext.current
@@ -89,24 +81,12 @@ fun SeriesScreen(
     val vimeusRepository = remember { VimeusRepository(context.applicationContext) }
     val unlimplayRepository = remember { UnlimplayRepository(context.applicationContext) }
     val nsrState by NsrPlayCatalogCache.state(NsrMediaType.SERIES).collectAsState()
-    val vimeusState by VimeusCatalogCache.state(VimeusType.SERIES).collectAsState()
-    val vimeusAnimeState by VimeusCatalogCache.state(VimeusType.ANIME).collectAsState()
-    val unlimplayState by UnlimplayCatalogCache.state(UnlimplayType.SERIES).collectAsState()
-    val unlimplayAnimeState by UnlimplayCatalogCache.state(UnlimplayType.ANIME).collectAsState()
     var selectedNsr by remember { mutableStateOf<NsrMedia?>(null) }
     var selectedVimeus by remember { mutableStateOf<VimeusMedia?>(null) }
     var selectedUnlimplay by remember { mutableStateOf<UnlimplayMedia?>(null) }
 
     LaunchedEffect(Unit) {
         NsrPlayCatalogCache.ensureLoaded(context, NsrMediaType.SERIES)
-        delay(250)
-        VimeusCatalogCache.ensureLoaded(context, VimeusType.SERIES)
-        delay(250)
-        VimeusCatalogCache.ensureLoaded(context, VimeusType.ANIME)
-        delay(250)
-        UnlimplayCatalogCache.ensureLoaded(context, UnlimplayType.SERIES)
-        delay(250)
-        UnlimplayCatalogCache.ensureLoaded(context, UnlimplayType.ANIME)
     }
 
     selectedUnlimplay?.let { media ->
@@ -164,14 +144,7 @@ fun SeriesScreen(
 
     if (isContentLoaded && series.isEmpty() && seriesHistory.isEmpty() && nsrSeriesHistory.isEmpty() &&
         vimeusSeriesHistory.isEmpty() && unlimplaySeriesHistory.isEmpty() && nsrState.items.isEmpty() &&
-        vimeusState.items.isEmpty() && vimeusAnimeState.items.isEmpty() &&
-        unlimplayState.items.isEmpty() && unlimplayAnimeState.items.isEmpty() &&
-        !nsrState.isLoading && !vimeusState.isLoading && !vimeusAnimeState.isLoading &&
-        !unlimplayState.isLoading && !unlimplayAnimeState.isLoading &&
-        nsrState.error == null && vimeusState.error == null && vimeusAnimeState.error == null &&
-        unlimplayState.error == null && unlimplayAnimeState.error == null &&
-        nsrState.loadedAt > 0L && vimeusState.loadedAt > 0L && vimeusAnimeState.loadedAt > 0L &&
-        unlimplayState.loadedAt > 0L && unlimplayAnimeState.loadedAt > 0L
+        !nsrState.isLoading && nsrState.error == null && nsrState.loadedAt > 0L
     ) {
         Box(
             modifier = modifier
@@ -279,7 +252,6 @@ fun SeriesScreen(
             }
         }
 
-        // NSRPlay titles live in the same Series tab, not in a separate screen.
         item {
             NsrPlayRow(
                 title = "NSRPlay · Series",
@@ -292,42 +264,6 @@ fun SeriesScreen(
                     NsrPlayCatalogCache.ensureLoaded(
                         context = context,
                         type = NsrMediaType.SERIES,
-                        force = true
-                    )
-                }
-            )
-        }
-
-        item {
-            VimeusRow(
-                title = "Vimeus · Series",
-                state = vimeusState,
-                primaryColor = primaryColor,
-                watchedKeys = watchedVimeus,
-                onItemClick = { selectedVimeus = it },
-                onLoadMore = { VimeusCatalogCache.loadMore(context, VimeusType.SERIES) },
-                onRetry = {
-                    VimeusCatalogCache.ensureLoaded(
-                        context = context,
-                        type = VimeusType.SERIES,
-                        force = true
-                    )
-                }
-            )
-        }
-
-        item {
-            VimeusRow(
-                title = "Vimeus · Anime",
-                state = vimeusAnimeState,
-                primaryColor = primaryColor,
-                watchedKeys = watchedVimeus,
-                onItemClick = { selectedVimeus = it },
-                onLoadMore = { VimeusCatalogCache.loadMore(context, VimeusType.ANIME) },
-                onRetry = {
-                    VimeusCatalogCache.ensureLoaded(
-                        context = context,
-                        type = VimeusType.ANIME,
                         force = true
                     )
                 }
@@ -406,42 +342,6 @@ fun SeriesScreen(
                     }
                 }
             }
-        }
-
-        item {
-            UnlimplayRow(
-                title = "Unlimplay · Series",
-                state = unlimplayState,
-                primaryColor = primaryColor,
-                watchedKeys = watchedUnlimplay,
-                onItemClick = { selectedUnlimplay = it },
-                onLoadMore = { UnlimplayCatalogCache.loadMore(context, UnlimplayType.SERIES) },
-                onRetry = {
-                    UnlimplayCatalogCache.ensureLoaded(
-                        context = context,
-                        type = UnlimplayType.SERIES,
-                        force = true
-                    )
-                }
-            )
-        }
-
-        item {
-            UnlimplayRow(
-                title = "Unlimplay · Anime",
-                state = unlimplayAnimeState,
-                primaryColor = primaryColor,
-                watchedKeys = watchedUnlimplay,
-                onItemClick = { selectedUnlimplay = it },
-                onLoadMore = { UnlimplayCatalogCache.loadMore(context, UnlimplayType.ANIME) },
-                onRetry = {
-                    UnlimplayCatalogCache.ensureLoaded(
-                        context = context,
-                        type = UnlimplayType.ANIME,
-                        force = true
-                    )
-                }
-            )
         }
 
         item {

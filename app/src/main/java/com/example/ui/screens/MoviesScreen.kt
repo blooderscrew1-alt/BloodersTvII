@@ -53,17 +53,13 @@ import com.example.data.vimeus.VimeusCatalogCache
 import com.example.data.vimeus.VimeusMedia
 import com.example.data.vimeus.VimeusRepository
 import com.example.data.vimeus.VimeusType
-import com.example.data.unlimplay.UnlimplayCatalogCache
 import com.example.data.unlimplay.UnlimplayMedia
 import com.example.data.unlimplay.UnlimplayRepository
 import com.example.data.unlimplay.UnlimplayType
 import com.example.ui.components.ContinueWatchingGrid
 import com.example.ui.components.NsrPlayRow
-import com.example.ui.components.UnlimplayRow
-import com.example.ui.components.VimeusRow
 import com.example.ui.components.NumberedPosterCard
 import com.example.ui.components.StandardPosterCard
-import kotlinx.coroutines.delay
 
 @Composable
 fun MoviesScreen(
@@ -80,8 +76,6 @@ fun MoviesScreen(
     val vimeusHistory by repository.vimeusHistory.collectAsState()
     val unlimplayHistory by repository.unlimplayHistory.collectAsState()
     val watchedNsr by repository.watchedNsr.collectAsState()
-    val watchedVimeus by repository.vimeusWatched.collectAsState()
-    val watchedUnlimplay by repository.unlimplayWatched.collectAsState()
     val watchedIds = remember(history) { history.map { it.itemId }.toSet() }
 
     val context = LocalContext.current
@@ -89,18 +83,12 @@ fun MoviesScreen(
     val vimeusRepository = remember { VimeusRepository(context.applicationContext) }
     val unlimplayRepository = remember { UnlimplayRepository(context.applicationContext) }
     val nsrState by NsrPlayCatalogCache.state(NsrMediaType.MOVIE).collectAsState()
-    val vimeusState by VimeusCatalogCache.state(VimeusType.MOVIE).collectAsState()
-    val unlimplayState by UnlimplayCatalogCache.state(UnlimplayType.MOVIE).collectAsState()
     var selectedNsr by remember { mutableStateOf<NsrMedia?>(null) }
     var selectedVimeus by remember { mutableStateOf<VimeusMedia?>(null) }
     var selectedUnlimplay by remember { mutableStateOf<UnlimplayMedia?>(null) }
 
     LaunchedEffect(Unit) {
         NsrPlayCatalogCache.ensureLoaded(context, NsrMediaType.MOVIE)
-        delay(300)
-        VimeusCatalogCache.ensureLoaded(context, VimeusType.MOVIE)
-        delay(300)
-        UnlimplayCatalogCache.ensureLoaded(context, UnlimplayType.MOVIE)
     }
 
     selectedUnlimplay?.let { media ->
@@ -158,10 +146,8 @@ fun MoviesScreen(
 
     if (isContentLoaded && movies.isEmpty() && movieHistory.isEmpty() && nsrMovieHistory.isEmpty() &&
         vimeusMovieHistory.isEmpty() && unlimplayMovieHistory.isEmpty() &&
-        nsrState.items.isEmpty() && vimeusState.items.isEmpty() && unlimplayState.items.isEmpty() &&
-        !nsrState.isLoading && !vimeusState.isLoading && !unlimplayState.isLoading &&
-        nsrState.error == null && vimeusState.error == null && unlimplayState.error == null &&
-        nsrState.loadedAt > 0L && vimeusState.loadedAt > 0L && unlimplayState.loadedAt > 0L
+        nsrState.items.isEmpty() &&
+        !nsrState.isLoading && nsrState.error == null && nsrState.loadedAt > 0L
     ) {
         Box(
             modifier = modifier
@@ -267,7 +253,6 @@ fun MoviesScreen(
             }
         }
 
-        // NSRPlay titles live in the same Movies tab, not in a separate screen.
         item {
             NsrPlayRow(
                 title = "NSRPlay · Películas",
@@ -280,24 +265,6 @@ fun MoviesScreen(
                     NsrPlayCatalogCache.ensureLoaded(
                         context = context,
                         type = NsrMediaType.MOVIE,
-                        force = true
-                    )
-                }
-            )
-        }
-
-        item {
-            VimeusRow(
-                title = "Vimeus · Películas",
-                state = vimeusState,
-                primaryColor = primaryColor,
-                watchedKeys = watchedVimeus,
-                onItemClick = { selectedVimeus = it },
-                onLoadMore = { VimeusCatalogCache.loadMore(context, VimeusType.MOVIE) },
-                onRetry = {
-                    VimeusCatalogCache.ensureLoaded(
-                        context = context,
-                        type = VimeusType.MOVIE,
                         force = true
                     )
                 }
@@ -384,24 +351,6 @@ fun MoviesScreen(
                     }
                 }
             }
-        }
-
-        item {
-            UnlimplayRow(
-                title = "Unlimplay · Películas",
-                state = unlimplayState,
-                primaryColor = primaryColor,
-                watchedKeys = watchedUnlimplay,
-                onItemClick = { selectedUnlimplay = it },
-                onLoadMore = { UnlimplayCatalogCache.loadMore(context, UnlimplayType.MOVIE) },
-                onRetry = {
-                    UnlimplayCatalogCache.ensureLoaded(
-                        context = context,
-                        type = UnlimplayType.MOVIE,
-                        force = true
-                    )
-                }
-            )
         }
 
         item {

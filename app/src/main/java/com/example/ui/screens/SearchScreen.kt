@@ -121,6 +121,7 @@ fun SearchScreen(
     val searchFieldFocusRequester = remember { FocusRequester() }
 
     var query by remember { mutableStateOf("") }
+    var iptvSubmittedQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("Todo") }
     var isSearchBarVisible by rememberSaveable { mutableStateOf(true) }
     var shouldFocusSearchField by remember { mutableStateOf(false) }
@@ -257,11 +258,13 @@ fun SearchScreen(
     }
 
     fun runSearch() {
+        val cleanQuery = query.trim()
+        iptvSubmittedQuery = if (cleanQuery.length >= 2) cleanQuery else ""
         submitNsrSearch()
         submitVimeusSearch()
         submitUnlimplaySearch()
         keyboard?.hide()
-        if (query.trim().length >= 2) {
+        if (cleanQuery.length >= 2) {
             isSearchBarVisible = false
         }
     }
@@ -279,13 +282,14 @@ fun SearchScreen(
         }
     }
 
-    val filteredItems = remember(query, allItems, selectedFilter) {
-        if (query.isBlank()) emptyList()
+    val filteredItems = remember(iptvSubmittedQuery, allItems, selectedFilter) {
+        val submitted = iptvSubmittedQuery
+        if (submitted.isBlank()) emptyList()
         else {
             allItems.filter { item ->
                 if (item.isHidden || item.type == ItemType.ADULT) return@filter false
-                val matchesQuery = item.name.contains(query, ignoreCase = true) ||
-                        item.category.contains(query, ignoreCase = true)
+                val matchesQuery = item.name.contains(submitted, ignoreCase = true) ||
+                        item.category.contains(submitted, ignoreCase = true)
 
                 val matchesType = when (selectedFilter) {
                     "Canales" -> item.type == ItemType.LIVE
@@ -368,6 +372,7 @@ fun SearchScreen(
     }
 
     val noLocal = filteredItems.isEmpty()
+    val iptvReady = iptvSubmittedQuery.isNotBlank() && iptvSubmittedQuery == query.trim()
     val noNsr = !showNsr || (nsrVisibleResults.isEmpty() && !nsrLoading && nsrError == null)
     val noVimeus = !showVimeus ||
         (vimeusVisibleResults.isEmpty() && !vimeusLoading && vimeusError == null)
@@ -465,6 +470,7 @@ fun SearchScreen(
             value = query,
             onValueChange = { newValue ->
                 query = newValue
+                iptvSubmittedQuery = ""
                 if (newValue.trim() != nsrSubmittedQuery) {
                     nsrResults = emptyList()
                     nsrError = null
@@ -657,12 +663,13 @@ fun SearchScreen(
             )
         }
 
-        if (query.trim().length >= 2 &&
-            selectedFilter != "Canales" &&
-            query.trim() != nsrSubmittedQuery
-        ) {
+        if (query.trim().isNotBlank() && !iptvReady) {
             Text(
-                text = "Toca la lupa para buscar también en NSRPlay y Vimeus",
+                text = if (query.trim().length < 2) {
+                    "Escribe al menos 2 letras y pulsa OK para buscar"
+                } else {
+                    "Pulsa OK o la lupa para buscar en IPTV, NSRPlay, Vimeus y Unlimplay"
+                },
                 color = Color(0xFF7F8F9F),
                 fontSize = 10.sp,
                 modifier = Modifier.padding(top = 6.dp)
@@ -709,9 +716,43 @@ fun SearchScreen(
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Text(
-                        text = "Busca canales de tus listas y películas o series de NSRPlay y Vimeus. Pulsa la lupa para incluir los proveedores.",
+                        text = "Escribe y pulsa OK o la lupa para buscar en tus listas IPTV y en NSRPlay, Vimeus y Unlimplay.",
                         color = Color(0xFF8F9DAA),
                         fontSize = 12.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        } else if (!iptvReady) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = primaryColor,
+                        modifier = Modifier.size(34.dp)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = if (query.trim().length < 2) {
+                            "Escribe al menos 2 letras"
+                        } else {
+                            "Pulsa OK para buscar"
+                        },
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Text(
+                        text = "Los resultados aparecerán después de confirmar la búsqueda, no mientras escribes.",
+                        color = Color(0xFF8F9DAA),
+                        fontSize = 11.sp,
                         textAlign = TextAlign.Center
                     )
                 }
