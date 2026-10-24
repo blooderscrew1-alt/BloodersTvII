@@ -387,6 +387,28 @@ class IptvRepository(private val context: Context) {
         // 2. Stream restore saved user channels from disk
         val userChannels = loadChannelsFromDisk()
         _items.value = (userChannels + _items.value).distinctBy { it.id }
+
+        // Older imports classified episode names such as "1x01" as live TV.
+        // Re-run the improved detector once so those episodes move to Series.
+        if (!prefs.getBoolean("series_detection_v2", false)) {
+            val migrated = _items.value.map { item ->
+                if (item.type == ItemType.LIVE || item.type == ItemType.MOVIE) {
+                    val detected = com.example.data.parser.M3uParser.detectType(
+                        name = item.name,
+                        category = item.category,
+                        url = item.streamUrl
+                    )
+                    if (detected == ItemType.SERIES) item.copy(type = ItemType.SERIES) else item
+                } else {
+                    item
+                }
+            }
+            if (migrated != _items.value) {
+                _items.value = migrated
+                persistChannelsToDisk()
+            }
+            prefs.edit().putBoolean("series_detection_v2", true).apply()
+        }
     }
 
     private fun loadChannelsFromDisk(): List<PlaylistItem> {

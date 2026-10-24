@@ -17,6 +17,12 @@ object M3uParser {
     private val TVG_LOGO_REGEX = Regex("""tvg-logo\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s,\r\n]+))""", RegexOption.IGNORE_CASE)
     private val TVG_ID_REGEX = Regex("""tvg-id\s*=\s*(?:"([^"]*)"|'([^']*)'|([^,\r\n]+))""", RegexOption.IGNORE_CASE)
     private val TVG_CHNO_REGEX = Regex("""tvg-chno\s*=\s*(?:"(\d+)"|'(\d+)'|(\d+))""", RegexOption.IGNORE_CASE)
+    private val SERIES_EPISODE_REGEX = Regex(
+        """(?:\bs\d{1,2}\s*[-_. ]?\s*e\d{1,3}\b|\b\d{1,2}x\d{1,3}\b|\b(?:temporada|cap[ií]tulo|episodio)\s*\d+)""",
+        RegexOption.IGNORE_CASE
+    )
+
+    private const val DEFAULT_MAX_CHANNELS = 120_000
 
     fun isAdultCategory(name: String): Boolean {
         val lower = name.lowercase()
@@ -86,7 +92,7 @@ object M3uParser {
         content: String,
         allowedCategories: Set<String>? = null,
         sourceId: String = "m3u",
-        maxChannelsLimit: Int = 20000
+        maxChannelsLimit: Int = DEFAULT_MAX_CHANNELS
     ): List<PlaylistItem> {
         return parseFilteredFromReader(StringReader(content), allowedCategories, sourceId, maxChannelsLimit)
     }
@@ -95,7 +101,7 @@ object M3uParser {
         file: File,
         allowedCategories: Set<String>? = null,
         sourceId: String = "m3u",
-        maxChannelsLimit: Int = 20000
+        maxChannelsLimit: Int = DEFAULT_MAX_CHANNELS
     ): List<PlaylistItem> {
         return try {
             file.bufferedReader(Charsets.UTF_8).use { reader ->
@@ -111,7 +117,7 @@ object M3uParser {
         reader: Reader,
         allowedCategories: Set<String>? = null,
         sourceId: String = "m3u",
-        maxChannelsLimit: Int = 20000
+        maxChannelsLimit: Int = DEFAULT_MAX_CHANNELS
     ): List<PlaylistItem> {
         val items = mutableListOf<PlaylistItem>()
         val bufferedReader = if (reader is BufferedReader) reader else BufferedReader(reader, 16384)
@@ -184,13 +190,15 @@ object M3uParser {
 
     fun detectType(name: String, category: String, url: String): ItemType {
         val lowerCat = category.lowercase()
-        val lowerName = name.lowercase()
         val lowerUrl = url.lowercase()
 
         return when {
             lowerCat.contains("series") || lowerCat.contains("serie") ||
-                    lowerName.contains("s0") || lowerName.contains("temporada") ||
-                    lowerUrl.contains("/series/") -> ItemType.SERIES
+                    lowerCat.contains("tv show") || lowerCat.contains("anime") ||
+                    lowerCat.contains("novela") ||
+                    SERIES_EPISODE_REGEX.containsMatchIn(name) ||
+                    lowerUrl.contains("/series/") || lowerUrl.contains("/serie/") ->
+                ItemType.SERIES
 
             lowerCat.contains("pelicula") || lowerCat.contains("películas") ||
                     lowerCat.contains("movie") || lowerCat.contains("cine") ||

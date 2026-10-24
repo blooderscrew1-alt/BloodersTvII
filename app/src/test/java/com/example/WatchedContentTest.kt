@@ -106,6 +106,45 @@ class WatchedContentTest {
     }
 
     @Test
+    fun `m3u detects common series episode formats`() {
+        val parser = com.example.data.parser.M3uParser
+        assertEquals(
+            ItemType.SERIES,
+            parser.detectType("Breaking Bad 1x01", "NETFLIX", "https://example.com/vod/1.mp4")
+        )
+        assertEquals(
+            ItemType.SERIES,
+            parser.detectType("Better Call Saul S01E02", "VOD", "https://example.com/2.mkv")
+        )
+        assertEquals(
+            ItemType.SERIES,
+            parser.detectType("Temporada 2 - Episodio 5", "Series", "https://example.com/3.mp4")
+        )
+        assertEquals(
+            ItemType.MOVIE,
+            parser.detectType("Breaking Bad: El Camino", "CINE", "https://example.com/movie.mp4")
+        )
+    }
+
+    @Test
+    fun `m3u keeps series that appear after twenty thousand entries`() {
+        val content = buildString {
+            repeat(20_001) { index ->
+                append("#EXTINF:-1 group-title=\"Cine\",Película $index\n")
+                append("https://example.com/movie/$index.mp4\n")
+            }
+            append("#EXTINF:-1 group-title=\"Series\",Breaking Bad 1x01\n")
+            append("https://example.com/series/breaking-bad-1x01.mp4\n")
+        }
+
+        val items = com.example.data.parser.M3uParser.parseFiltered(content)
+
+        assertEquals(20_002, items.size)
+        assertEquals(ItemType.SERIES, items.last().type)
+        assertEquals("Breaking Bad 1x01", items.last().name)
+    }
+
+    @Test
     fun `adult unlock lasts for the current session only`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = IptvRepository(context)
