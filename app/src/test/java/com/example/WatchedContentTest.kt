@@ -91,6 +91,18 @@ class WatchedContentTest {
             ItemType.ADULT,
             repository.items.value.first { it.id == "editor-item" }.type
         )
+
+        val backup = org.json.JSONObject(
+            com.example.data.backup.SettingsBackupManager.buildJson(context, repository)
+        )
+        val backupPlaylist = (0 until backup.getJSONArray("playlists").length())
+            .map { backup.getJSONArray("playlists").getJSONObject(it) }
+            .first { it.optString("name") == "Editor test" }
+        val edit = backupPlaylist.getJSONArray("categoryEdits").getJSONObject(0)
+        assertEquals("Cine", edit.optString("original"))
+        assertEquals("Películas", edit.optString("name"))
+        assertEquals("ADULT", edit.optString("type"))
+        assertTrue(edit.optBoolean("hidden"))
     }
 
     @Test

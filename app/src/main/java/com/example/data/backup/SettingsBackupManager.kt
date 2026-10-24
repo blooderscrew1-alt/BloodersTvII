@@ -2,6 +2,7 @@ package com.example.data.backup
 
 import android.content.Context
 import com.example.data.model.BufferMode
+import com.example.data.model.ItemType
 import com.example.data.model.PlaylistSource
 import com.example.data.model.SourceType
 import com.example.data.model.ThemeAccent
@@ -59,6 +60,12 @@ object SettingsBackupManager {
                         put("username", playlist.username)
                         put("password", playlist.password)
                         put("selectedCategories", JSONArray(playlist.selectedCategories.toList()))
+                        put(
+                            "categoryEdits",
+                            buildCategoryEdits(
+                                repository.items.value.filter { it.sourceId == playlist.id }
+                            )
+                        )
                     }
                 )
             }
@@ -221,6 +228,11 @@ object SettingsBackupManager {
                                         ),
                                         items
                                     )
+                                    applyCategoryEdits(
+                                        repository = repository,
+                                        sourceId = sourceId,
+                                        edits = obj.optJSONArray("categoryEdits")
+                                    )
                                     existing.add(key)
                                     added++
                                 }
@@ -270,6 +282,11 @@ object SettingsBackupManager {
                                     ),
                                     items
                                 )
+                                applyCategoryEdits(
+                                    repository = repository,
+                                    sourceId = sourceId,
+                                    edits = obj.optJSONArray("categoryEdits")
+                                )
                                 existing.add(key)
                                 added++
                             }
@@ -305,5 +322,58 @@ object SettingsBackupManager {
             optString(i).takeIf { it.isNotBlank() }?.let(result::add)
         }
         return result
+    }
+
+    private fun buildCategoryEdits(
+        items: List<com.example.data.model.PlaylistItem>
+    ): JSONArray {
+        val edits = JSONArray()
+        items.groupBy { it.originalCategory ?: it.category }.forEach { (original, categoryItems) ->
+            if (original.isBlank() || categoryItems.isEmpty()) return@forEach
+            val currentName = categoryItems
+                .groupingBy { it.category }
+                .eachCount()
+                .maxByOrNull { it.value }
+                ?.key
+                ?: original
+            val type = categoryItems
+                .groupingBy { it.type }
+                .eachCount()
+                .maxByOrNull { it.value }
+                ?.key
+                ?: ItemType.LIVE
+            edits.put(
+                JSONObject().apply {
+                    put("original", original)
+                    put("name", currentName)
+                    put("type", type.name)
+                    put("hidden", categoryItems.all { it.isHidden })
+                }
+            )
+        }
+        return edits
+    }
+
+    private fun applyCategoryEdits(
+        repository: IptvRepository,
+        sourceId: String,
+        edits: JSONArray?
+    ) {
+        if (edits == null) return
+        for (i in 0 until edits.length()) {
+            val edit = edits.optJSONObject(i) ?: continue
+            val original = edit.optString("original").trim()
+            val current = edit.optString("name").trim().ifBlank { original }
+            if (original.isBlank() || current.isBlank()) continue
+
+            if (original != current) {
+                repository.renameCategory(sourceId, original, current)
+            }
+            val type = runCatching {
+                ItemType.valueOf(edit.optString("type", ItemType.LIVE.name))
+            }.getOrDefault(ItemType.LIVE)
+            repository.setCategoryType(sourceId, current, type)
+            repository.setCategoryHidden(sourceId, current, edit.optBoolean("hidden", false))
+        }
     }
 }

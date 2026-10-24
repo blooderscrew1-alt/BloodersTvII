@@ -416,6 +416,7 @@ class IptvRepository(private val context: Context) {
                         var durationMs = 0L
                         var sourceId = "user"
                         var isHidden = false
+                        var originalCategory: String? = null
 
                         while (reader.hasNext()) {
                             val key = reader.nextName()
@@ -466,6 +467,13 @@ class IptvRepository(private val context: Context) {
                                 "durationMs" -> durationMs = reader.nextLong()
                                 "sourceId" -> sourceId = reader.nextString()
                                 "isHidden" -> isHidden = reader.nextBoolean()
+                                "originalCategory" -> {
+                                    if (reader.peek() != JsonToken.NULL) {
+                                        originalCategory = reader.nextString().takeIf { it.isNotBlank() }
+                                    } else {
+                                        reader.nextNull()
+                                    }
+                                }
                                 else -> reader.skipValue()
                             }
                         }
@@ -488,7 +496,8 @@ class IptvRepository(private val context: Context) {
                                     overview = overview,
                                     durationMs = durationMs,
                                     sourceId = sourceId,
-                                    isHidden = isHidden
+                                    isHidden = isHidden,
+                                    originalCategory = originalCategory
                                 )
                             )
                         }
@@ -552,6 +561,11 @@ class IptvRepository(private val context: Context) {
                     jsonWriter.name("durationMs").value(ch.durationMs)
                     jsonWriter.name("sourceId").value(ch.sourceId)
                     jsonWriter.name("isHidden").value(ch.isHidden)
+                    if (ch.originalCategory != null) {
+                        jsonWriter.name("originalCategory").value(ch.originalCategory)
+                    } else {
+                        jsonWriter.name("originalCategory").nullValue()
+                    }
                     jsonWriter.endObject()
                 }
                 jsonWriter.endArray()
@@ -650,7 +664,10 @@ class IptvRepository(private val context: Context) {
         _items.value = _items.value.map { item ->
             if (item.sourceId == sourceId && item.category == oldName) {
                 changed = true
-                item.copy(category = clean)
+                item.copy(
+                    category = clean,
+                    originalCategory = item.originalCategory ?: oldName
+                )
             } else {
                 item
             }
