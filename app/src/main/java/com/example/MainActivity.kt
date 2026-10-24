@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.example.data.iptv.IptvEpisode
 import com.example.data.iptv.IptvSeriesGrouping
 import com.example.data.model.PlaylistItem
 import com.example.data.model.ItemType
@@ -102,16 +103,18 @@ fun MainApp(
     var currentTab by remember { mutableStateOf(AppTab.PELICULAS) }
     var isSearchOpen by remember { mutableStateOf(false) }
     var fullscreenItem by remember { mutableStateOf<PlaylistItem?>(null) }
+    var fullscreenQueue by remember { mutableStateOf<List<IptvEpisode>>(emptyList()) }
 
     // VOD playback resumes where the watch history left it. Live channels start
     // at the live edge.
-    fun startPlayback(item: PlaylistItem) {
+    fun startPlayback(item: PlaylistItem, episodeQueue: List<IptvEpisode> = emptyList()) {
         val resumePosition = if (item.type != ItemType.LIVE) {
             repository.history.value.firstOrNull { it.itemId == item.id }?.positionMs ?: 0L
         } else {
             0L
         }
         playerManager.playStream(item.streamUrl, resumePosition)
+        fullscreenQueue = episodeQueue
         fullscreenItem = item
     }
 
@@ -121,7 +124,11 @@ fun MainApp(
             currentItem = fullscreenItem!!,
             repository = repository,
             playerManager = playerManager,
-            onClose = { fullscreenItem = null },
+            episodeQueue = fullscreenQueue,
+            onClose = {
+                fullscreenItem = null
+                fullscreenQueue = emptyList()
+            },
             primaryColor = primaryColor
         )
     } else {
@@ -160,6 +167,7 @@ fun MainApp(
                     SearchScreen(
                         repository = repository,
                         onPlayItem = { item -> startPlayback(item) },
+                        onPlaySeriesEpisode = { item, queue -> startPlayback(item, queue) },
                         primaryColor = primaryColor
                     )
                 } else {
@@ -172,6 +180,7 @@ fun MainApp(
                             repository = repository,
                             playerManager = playerManager,
                             onEnterFullscreen = { item ->
+                                fullscreenQueue = emptyList()
                                 fullscreenItem = item
                             },
                             onNavigateToPlaylists = {
@@ -190,6 +199,7 @@ fun MainApp(
                         AppTab.SERIES -> SeriesScreen(
                             repository = repository,
                             onPlayItem = { item -> startPlayback(item) },
+                            onPlaySeriesEpisode = { item, queue -> startPlayback(item, queue) },
                             onNavigateToPlaylists = {
                                 currentTab = AppTab.PLAYLISTS
                             },

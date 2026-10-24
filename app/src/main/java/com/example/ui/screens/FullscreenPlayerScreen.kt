@@ -74,6 +74,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
+import com.example.data.iptv.IptvEpisode
 import com.example.data.model.ItemType
 import com.example.data.model.PlaylistItem
 import com.example.data.player.SmartPlayerManager
@@ -87,6 +88,7 @@ fun FullscreenPlayerScreen(
     currentItem: PlaylistItem,
     repository: IptvRepository,
     playerManager: SmartPlayerManager,
+    episodeQueue: List<IptvEpisode> = emptyList(),
     onClose: () -> Unit,
     primaryColor: Color = Color(0xFFCCFF00),
     modifier: Modifier = Modifier
@@ -96,6 +98,8 @@ fun FullscreenPlayerScreen(
     val isPlaying by playerManager.isPlaying.collectAsState()
     val currentPos by playerManager.currentPosition.collectAsState()
     val duration by playerManager.duration.collectAsState()
+    val playbackEnded by playerManager.playbackEnded.collectAsState()
+    val hasEpisodeQueue = episodeQueue.isNotEmpty()
 
     var activeItem by remember { mutableStateOf(currentItem) }
     var showControls by remember { mutableStateOf(true) }
@@ -115,10 +119,24 @@ fun FullscreenPlayerScreen(
         playerManager.playStream(item.streamUrl, resumePosition)
     }
 
-    // Related channels in same category
-    val channelList = remember(allItems, activeItem) {
-        allItems.filter { it.type == activeItem.type && it.category == activeItem.category }
-            .ifEmpty { allItems.filter { it.type == activeItem.type } }
+    // Related channels in same category. Series playback uses its episode queue.
+    val channelList = remember(allItems, activeItem, hasEpisodeQueue) {
+        if (hasEpisodeQueue) {
+            emptyList()
+        } else {
+            allItems.filter { it.type == activeItem.type && it.category == activeItem.category }
+                .ifEmpty { allItems.filter { it.type == activeItem.type } }
+        }
+    }
+
+    // Continue with the next episode automatically when the current one ends.
+    LaunchedEffect(playbackEnded, activeItem.id, episodeQueue) {
+        if (playbackEnded && hasEpisodeQueue) {
+            val index = episodeQueue.indexOfFirst { it.item.id == activeItem.id }
+            if (index >= 0 && index < episodeQueue.lastIndex) {
+                switchTo(episodeQueue[index + 1].item)
+            }
+        }
     }
 
     // Auto record watch history periodically. Throttled so a 500 ms position
@@ -164,21 +182,27 @@ fun FullscreenPlayerScreen(
                             true
                         }
                         KeyEvent.KEYCODE_DPAD_UP -> {
-                            // Fast Channel Next
-                            val idx = channelList.indexOfFirst { it.id == activeItem.id }
+                            val navItems = if (hasEpisodeQueue) {
+                                episodeQueue.map { it.item }
+                            } else {
+                                channelList
+                            }
+                            val idx = navItems.indexOfFirst { it.id == activeItem.id }
                             if (idx != -1 && idx > 0) {
-                                val next = channelList[idx - 1]
-                                switchTo(next)
+                                switchTo(navItems[idx - 1])
                             }
                             showControls = true
                             true
                         }
                         KeyEvent.KEYCODE_DPAD_DOWN -> {
-                            // Fast Channel Prev
-                            val idx = channelList.indexOfFirst { it.id == activeItem.id }
-                            if (idx != -1 && idx < channelList.size - 1) {
-                                val prev = channelList[idx + 1]
-                                switchTo(prev)
+                            val navItems = if (hasEpisodeQueue) {
+                                episodeQueue.map { it.item }
+                            } else {
+                                channelList
+                            }
+                            val idx = navItems.indexOfFirst { it.id == activeItem.id }
+                            if (idx != -1 && idx < navItems.size - 1) {
+                                switchTo(navItems[idx + 1])
                             }
                             showControls = true
                             true
@@ -361,7 +385,7 @@ fun FullscreenPlayerScreen(
                             modifier = Modifier.horizontalScroll(rememberScrollState())
                         ) {
                             Text(
-                                text = "Lista de canales",
+                                text = if (hasEpisodeQueue) "Lista de episodios" else "Lista de canales",
                                 color = Color(0xFFC0CAD5),
                                 fontSize = 11.sp,
                                 modifier = Modifier
@@ -380,7 +404,7 @@ fun FullscreenPlayerScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.FormatListBulleted,
-                                    contentDescription = "Lista de canales",
+                                    contentDescription = if (hasEpisodeQueue) "Lista de episodios" else "Lista de canales",
                                     tint = Color.Black,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -470,7 +494,11 @@ fun FullscreenPlayerScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Canales (${channelList.size})",
+                            text = if (hasEpisodeQueue) {
+                                "Episodios (${episodeQueue.size})"
+                            } else {
+                                "Canales (${channelList.size})"
+                            },
                             color = primaryColor,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp
@@ -485,35 +513,69 @@ fun FullscreenPlayerScreen(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(channelList) { ch ->
-                            val isSelected = ch.id == activeItem.id
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(if (isSelected) primaryColor else Color(0xFF131E28))
-                                    .clickable {
-                                        switchTo(ch)
-                                        showChannelDrawer = false
-                                    }
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = (ch.channelNumber ?: "").toString(),
-                                    color = if (isSelected) Color.Black else Color(0xFF8F9DAA),
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.width(30.dp)
-                                )
-                                Text(
-                                    text = ch.name,
-                                    color = if (isSelected) Color.Black else Color.White,
-                                    fontSize = 12.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                        if (hasEpisodeQueue) {
+                            items(episodeQueue, key = { it.item.id }) { episode ->
+                                val isSelected = episode.item.id == activeItem.id
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(if (isSelected) primaryColor else Color(0xFF131E28))
+                                        .clickable {
+                                            switchTo(episode.item)
+                                            showChannelDrawer = false
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "T${episode.season}E${episode.episode}",
+                                        color = if (isSelected) Color.Black else Color(0xFF8F9DAA),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.width(48.dp)
+                                    )
+                                    Text(
+                                        text = episode.title,
+                                        color = if (isSelected) Color.Black else Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        } else {
+                            items(channelList) { ch ->
+                                val isSelected = ch.id == activeItem.id
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(if (isSelected) primaryColor else Color(0xFF131E28))
+                                        .clickable {
+                                            switchTo(ch)
+                                            showChannelDrawer = false
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = (ch.channelNumber ?: "").toString(),
+                                        color = if (isSelected) Color.Black else Color(0xFF8F9DAA),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.width(30.dp)
+                                    )
+                                    Text(
+                                        text = ch.name,
+                                        color = if (isSelected) Color.Black else Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
                         }
                     }

@@ -66,6 +66,7 @@ import kotlinx.coroutines.withContext
 fun SeriesScreen(
     repository: IptvRepository,
     onPlayItem: (PlaylistItem) -> Unit,
+    onPlaySeriesEpisode: ((PlaylistItem, List<com.example.data.iptv.IptvEpisode>) -> Unit)? = null,
     onNavigateToPlaylists: (() -> Unit)? = null,
     primaryColor: Color = Color(0xFFCCFF00),
     modifier: Modifier = Modifier
@@ -97,6 +98,7 @@ fun SeriesScreen(
             series = series,
             primaryColor = primaryColor,
             onPlayItem = onPlayItem,
+            onPlayEpisode = onPlaySeriesEpisode,
             onBack = { selectedSeries = null }
         )
         return

@@ -105,6 +105,7 @@ import kotlinx.coroutines.launch
 fun SearchScreen(
     repository: IptvRepository,
     onPlayItem: (PlaylistItem) -> Unit,
+    onPlaySeriesEpisode: ((PlaylistItem, List<com.example.data.iptv.IptvEpisode>) -> Unit)? = null,
     primaryColor: Color = Color(0xFFCCFF00),
     modifier: Modifier = Modifier
 ) {
@@ -318,6 +319,7 @@ fun SearchScreen(
             series = series,
             primaryColor = primaryColor,
             onPlayItem = onPlayItem,
+            onPlayEpisode = onPlaySeriesEpisode,
             onBack = { selectedIptvSeries = null }
         )
         return

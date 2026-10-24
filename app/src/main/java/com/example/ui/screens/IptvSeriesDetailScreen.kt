@@ -53,6 +53,7 @@ fun IptvSeriesDetailScreen(
     series: IptvSeries,
     primaryColor: Color,
     onPlayItem: (PlaylistItem) -> Unit,
+    onPlayEpisode: ((PlaylistItem, List<IptvEpisode>) -> Unit)? = null,
     onBack: () -> Unit
 ) {
     BackHandler { onBack() }
@@ -181,7 +182,13 @@ fun IptvSeriesDetailScreen(
                 EpisodeRow(
                     episode = episode,
                     primaryColor = primaryColor,
-                    onClick = { onPlayItem(episode.item) }
+                    onClick = {
+                        if (onPlayEpisode != null) {
+                            onPlayEpisode(episode.item, series.episodes)
+                        } else {
+                            onPlayItem(episode.item)
+                        }
+                    }
                 )
             }
         }

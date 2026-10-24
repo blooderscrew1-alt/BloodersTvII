@@ -19,6 +19,7 @@ Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propia
 - **Búsqueda global** con vista tipo cover-flow: póster central grande, laterales inclinados, borde de acento, reflejo y título/progreso sobre la carátula. Orden: IPTV → Vimeus → NSRPlay → **Unlimplay al final**.
 - **Deslizador de tamaño de pósters** a la derecha de los filtros de búsqueda; el tamaño elegido se guarda y se aplica a los tres carruseles (IPTV, Vimeus y NSRPlay).
 - **La barra de búsqueda se oculta al pulsar Enter/OK o la lupa**, para dejar más espacio a los resultados. Un icono de lupa a la izquierda de los filtros la vuelve a mostrar y enfoca el campo.
+- **Reproductor de series**: muestra una lista lateral de episodios y al terminar un capítulo pasa automáticamente al siguiente.
 - **Series IPTV agrupadas**: una portada por serie (todas las temporadas juntas); al abrirla se ven temporadas y episodios. El agrupado usa un solo recorrido rápido y se ejecuta fuera del hilo principal.
 - La búsqueda IPTV también agrupa todos los capítulos en una sola tarjeta.
 - **Series IPTV corregidas**: el importador ya no corta en 20 000 elementos (sube a 120 000) y reconoce episodios `1x01`, `S01E01`, “temporada/capítulo/episodio”, además de categorías Series/Anime/Novela. Los canales ya importados se reclasifican una vez automáticamente.

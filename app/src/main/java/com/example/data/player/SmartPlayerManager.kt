@@ -91,6 +91,9 @@ class SmartPlayerManager(private val context: Context) {
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration.asStateFlow()
 
+    private val _playbackEnded = MutableStateFlow(false)
+    val playbackEnded: StateFlow<Boolean> = _playbackEnded.asStateFlow()
+
     private var currentBufferMode: BufferMode = BufferMode.SMOOTH_LOW_SPEED
     private var currentStreamUrl: String? = null
 
@@ -153,6 +156,7 @@ class SmartPlayerManager(private val context: Context) {
                     override fun onPlaybackStateChanged(playbackState: Int) {
                         _isBuffering.value = playbackState == Player.STATE_BUFFERING
                         _isPlaying.value = playbackState == Player.STATE_READY && playWhenReady
+                        _playbackEnded.value = playbackState == Player.STATE_ENDED
 
                         if (playbackState == Player.STATE_READY) {
                             _errorMessage.value = null
@@ -180,6 +184,7 @@ class SmartPlayerManager(private val context: Context) {
     fun playStream(url: String, startPositionMs: Long = 0L, autoPlay: Boolean = true) {
         currentStreamUrl = url
         _errorMessage.value = null
+        _playbackEnded.value = false
         val player = getPlayer()
 
         val mediaItem = MediaItem.Builder()
@@ -227,6 +232,7 @@ class SmartPlayerManager(private val context: Context) {
         exoPlayer?.stop()
         _isPlaying.value = false
         _isBuffering.value = false
+        _playbackEnded.value = false
     }
 
     fun releasePlayer() {
