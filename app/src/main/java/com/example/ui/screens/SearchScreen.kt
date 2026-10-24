@@ -318,6 +318,7 @@ fun SearchScreen(
         IptvSeriesDetailScreen(
             series = series,
             primaryColor = primaryColor,
+            watchedIds = watchedIds,
             onPlayItem = onPlayItem,
             onPlayEpisode = onPlaySeriesEpisode,
             onBack = { selectedIptvSeries = null }

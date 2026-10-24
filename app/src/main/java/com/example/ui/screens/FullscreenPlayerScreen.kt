@@ -95,6 +95,8 @@ fun FullscreenPlayerScreen(
 ) {
     val context = LocalContext.current
     val allItems by repository.items.collectAsState()
+    val history by repository.history.collectAsState()
+    val watchedIds = remember(history) { history.map { it.itemId }.toSet() }
     val isPlaying by playerManager.isPlaying.collectAsState()
     val currentPos by playerManager.currentPosition.collectAsState()
     val duration by playerManager.duration.collectAsState()
@@ -541,8 +543,18 @@ fun FullscreenPlayerScreen(
                                         fontSize = 12.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                         maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
                                     )
+                                    if (watchedIds.contains(episode.item.id)) {
+                                        Text(
+                                            text = "VISTO",
+                                            color = if (isSelected) Color.Black else primaryColor,
+                                            fontSize = 8.sp,
+                                            fontWeight = FontWeight.Black,
+                                            modifier = Modifier.padding(start = 4.dp)
+                                        )
+                                    }
                                 }
                             }
                         } else {

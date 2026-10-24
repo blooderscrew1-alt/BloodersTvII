@@ -52,6 +52,7 @@ import com.example.data.model.PlaylistItem
 fun IptvSeriesDetailScreen(
     series: IptvSeries,
     primaryColor: Color,
+    watchedIds: Set<String> = emptySet(),
     onPlayItem: (PlaylistItem) -> Unit,
     onPlayEpisode: ((PlaylistItem, List<IptvEpisode>) -> Unit)? = null,
     onBack: () -> Unit
@@ -182,6 +183,7 @@ fun IptvSeriesDetailScreen(
                 EpisodeRow(
                     episode = episode,
                     primaryColor = primaryColor,
+                    isWatched = watchedIds.contains(episode.item.id),
                     onClick = {
                         if (onPlayEpisode != null) {
                             onPlayEpisode(episode.item, series.episodes)
@@ -199,6 +201,7 @@ fun IptvSeriesDetailScreen(
 private fun EpisodeRow(
     episode: IptvEpisode,
     primaryColor: Color,
+    isWatched: Boolean,
     onClick: () -> Unit
 ) {
     val interaction = remember(episode.item.id) { MutableInteractionSource() }
@@ -247,6 +250,22 @@ private fun EpisodeRow(
                 color = Color(0xFF8F9DAA),
                 fontSize = 9.sp
             )
+        }
+        if (isWatched) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(primaryColor.copy(alpha = 0.18f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "VISTO",
+                    color = primaryColor,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+            Spacer(modifier = Modifier.width(6.dp))
         }
         Icon(
             Icons.Default.PlayArrow,
