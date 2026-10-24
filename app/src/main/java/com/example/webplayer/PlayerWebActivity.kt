@@ -8,7 +8,10 @@ import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Rational
+import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -184,6 +187,72 @@ class PlayerWebActivity : ComponentActivity() {
      * top-level document returns ERR_TOKEN_EXPIRED; this wrapper is the exact
      * iframe usage that works on the provider's example page.
      */
+    /**
+     * Remote-control support for web players that only expose a touch play
+     * button. Media keys always control the video; navigation keys are left to
+     * Compose unless the WebView owns the focus.
+     */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
+                KeyEvent.KEYCODE_MEDIA_PLAY,
+                KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                    if (useIframe) tapCenter()
+                    else webView.evaluateJavascript(PlayerAdBlocker.TOGGLE_PLAY_SCRIPT, null)
+                    return true
+                }
+                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,
+                KeyEvent.KEYCODE_MEDIA_NEXT -> {
+                    webView.evaluateJavascript(PlayerAdBlocker.seekScript(10), null)
+                    return true
+                }
+                KeyEvent.KEYCODE_MEDIA_REWIND,
+                KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
+                    webView.evaluateJavascript(PlayerAdBlocker.seekScript(-10), null)
+                    return true
+                }
+                KeyEvent.KEYCODE_DPAD_CENTER,
+                KeyEvent.KEYCODE_ENTER,
+                KeyEvent.KEYCODE_NUMPAD_ENTER,
+                KeyEvent.KEYCODE_SPACE -> {
+                    if (webView.hasFocus()) {
+                        tapCenter()
+                        return true
+                    }
+                }
+                KeyEvent.KEYCODE_DPAD_LEFT -> {
+                    if (webView.hasFocus()) {
+                        webView.evaluateJavascript(PlayerAdBlocker.seekScript(-10), null)
+                        return true
+                    }
+                }
+                KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                    if (webView.hasFocus()) {
+                        webView.evaluateJavascript(PlayerAdBlocker.seekScript(10), null)
+                        return true
+                    }
+                }
+            }
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
+    private fun tapCenter() {
+        val width = webView.width
+        val height = webView.height
+        if (width <= 0 || height <= 0) return
+        val now = SystemClock.uptimeMillis()
+        val x = width / 2f
+        val y = height / 2f
+        val down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0)
+        val up = MotionEvent.obtain(now, now + 80, MotionEvent.ACTION_UP, x, y, 0)
+        webView.dispatchTouchEvent(down)
+        webView.dispatchTouchEvent(up)
+        down.recycle()
+        up.recycle()
+    }
+
     private fun loadStartUrl() {
         if (useIframe) {
             val safeUrl = startUrl
@@ -220,6 +289,8 @@ class PlayerWebActivity : ComponentActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     private fun configureWebView() {
         webView.setBackgroundColor(AndroidColor.BLACK)
+        webView.isFocusable = true
+        webView.isFocusableInTouchMode = true
         webView.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
@@ -322,10 +393,17 @@ class PlayerWebActivity : ComponentActivity() {
                 isLoading = false
                 loadProgress = 100
                 view?.evaluateJavascript(PlayerAdBlocker.PAGE_SCRIPT, null)
+                view?.evaluateJavascript(PlayerAdBlocker.AUTOPLAY_SCRIPT, null)
                 view?.evaluateJavascript(
                     PlayerAdBlocker.playbackSpeedScript(playbackSpeed),
                     null
                 )
+                view?.requestFocus()
+                if (useIframe) {
+                    // Cross-origin iframes cannot be scripted; a synthetic tap
+                    // in the centre presses the provider's own play overlay.
+                    webView.postDelayed({ tapCenter() }, 1_800)
+                }
                 if (url != null) {
                     val extensionScript = ExtensionEngine.generateInjectionScript(extensions, url)
                     if (extensionScript.isNotBlank()) {

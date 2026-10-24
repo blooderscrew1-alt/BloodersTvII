@@ -238,4 +238,78 @@ object PlayerAdBlocker {
             }
         })();
     """.trimIndent()
+
+    val AUTOPLAY_SCRIPT: String = """
+        (function() {
+            function startVideo() {
+                try {
+                    var videos = document.querySelectorAll('video');
+                    var hasVideo = videos.length > 0;
+                    for (var i = 0; i < videos.length; i++) {
+                        var v = videos[i];
+                        v.muted = false;
+                        var p = v.play();
+                        if (p && p.catch) p.catch(function() {});
+                    }
+                    var selectors = [
+                        '.vjs-big-play-button',
+                        '.jw-display-icon-container',
+                        '.plyr__control[data-plyr="play"]',
+                        'button[aria-label*="play" i]',
+                        'button[aria-label*="reproducir" i]',
+                        '[role="button"][aria-label*="play" i]',
+                        '[title*="play" i]',
+                        '[class*="play-button"]',
+                        '[class*="playButton"]'
+                    ];
+                    var first = document.querySelector('video');
+                    if (!first || first.paused) {
+                        for (var s = 0; s < selectors.length; s++) {
+                            var button = document.querySelector(selectors[s]);
+                            if (button) { button.click(); break; }
+                        }
+                    }
+                    return hasVideo;
+                } catch (e) { return false; }
+            }
+            [350, 1000, 2200, 4500].forEach(function(ms) {
+                setTimeout(startVideo, ms);
+            });
+        })();
+    """.trimIndent()
+
+    val TOGGLE_PLAY_SCRIPT: String = """
+        (function() {
+            try {
+                var videos = document.querySelectorAll('video');
+                if (videos.length > 0) {
+                    var v = videos[0];
+                    if (v.paused) {
+                        var p = v.play();
+                        if (p && p.catch) p.catch(function() {});
+                    } else {
+                        v.pause();
+                    }
+                    return;
+                }
+                var button = document.querySelector(
+                    '.vjs-big-play-button, .jw-display-icon-container, .plyr__control[data-plyr="play"], [aria-label*="play" i]'
+                );
+                if (button) button.click();
+            } catch (e) {}
+        })();
+    """.trimIndent()
+
+    fun seekScript(deltaSeconds: Int): String = """
+        (function() {
+            try {
+                var videos = document.querySelectorAll('video');
+                for (var i = 0; i < videos.length; i++) {
+                    var v = videos[i];
+                    var max = isFinite(v.duration) ? v.duration : v.currentTime + $deltaSeconds;
+                    v.currentTime = Math.max(0, Math.min(max, v.currentTime + $deltaSeconds));
+                }
+            } catch (e) {}
+        })();
+    """.trimIndent()
 }
