@@ -132,6 +132,34 @@ class WatchedContentTest {
     }
 
     @Test
+    fun `series history keeps only the latest episode per series`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = IptvRepository(context)
+        repository.clearHistory()
+
+        fun episode(number: Int) = PlaylistItem(
+            id = "history-episode-$number",
+            name = "History Show S01E0$number",
+            streamUrl = "https://example.com/history-$number.mp4",
+            category = "Series",
+            type = ItemType.SERIES,
+            sourceId = "history-test"
+        )
+
+        repository.recordWatchHistory(episode(1), 1_000L, 2_000L)
+        repository.recordWatchHistory(episode(2), 1_000L, 2_000L)
+
+        assertEquals(
+            1,
+            repository.history.value.count {
+                it.type == ItemType.SERIES && it.title.contains("History Show")
+            }
+        )
+        assertTrue(repository.watchedEpisodeIds.value.contains("history-episode-1"))
+        assertTrue(repository.watchedEpisodeIds.value.contains("history-episode-2"))
+    }
+
+    @Test
     fun `m3u detects common series episode formats`() {
         val parser = com.example.data.parser.M3uParser
         assertEquals(

@@ -115,6 +115,29 @@ object IptvSeriesGrouping {
         return normal + series
     }
 
+    /** Stable key used to keep only the latest history entry per series. */
+    fun seriesKeyFromName(name: String): String {
+        val trimmed = name.trim()
+        if (trimmed.isBlank()) return ""
+        val marker = findMarker(trimmed, 0)
+        val title = if (marker == null) {
+            trimmed
+        } else {
+            val base = if (marker.start > 0) {
+                trimmed.substring(0, marker.start).trim().trimEnd('-', '–', '|', ':', '.', ' ')
+            } else {
+                trimmed
+            }
+            val rest = trimmed.substring(marker.end).trim().trimStart('-', '–', '|', ':', '.', ' ')
+            if (marker.start <= 0 || base.isBlank()) {
+                rest.ifBlank { trimmed }
+            } else {
+                base
+            }
+        }
+        return normalize(title)
+    }
+
     private var cachedFingerprint: Int = 0
     private var cachedGroups: List<IptvSeries> = emptyList()
 

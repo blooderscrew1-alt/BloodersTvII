@@ -115,6 +115,7 @@ fun SearchScreen(
     val watchedVimeus by repository.vimeusWatched.collectAsState()
     val watchedUnlimplay by repository.unlimplayWatched.collectAsState()
     val watchedIds = remember(history) { history.map { it.itemId }.toSet() }
+    val watchedEpisodeIds by repository.watchedEpisodeIds.collectAsState()
     val context = LocalContext.current
     val nsrRepository = remember { NsrPlayRepository(context.applicationContext) }
     val vimeusRepository = remember { VimeusRepository(context.applicationContext) }
@@ -318,7 +319,7 @@ fun SearchScreen(
         IptvSeriesDetailScreen(
             series = series,
             primaryColor = primaryColor,
-            watchedIds = watchedIds,
+            watchedIds = watchedEpisodeIds,
             onPlayItem = onPlayItem,
             onPlayEpisode = onPlaySeriesEpisode,
             onBack = { selectedIptvSeries = null }

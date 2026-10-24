@@ -95,8 +95,7 @@ fun FullscreenPlayerScreen(
 ) {
     val context = LocalContext.current
     val allItems by repository.items.collectAsState()
-    val history by repository.history.collectAsState()
-    val watchedIds = remember(history) { history.map { it.itemId }.toSet() }
+    val watchedIds by repository.watchedEpisodeIds.collectAsState()
     val isPlaying by playerManager.isPlaying.collectAsState()
     val currentPos by playerManager.currentPosition.collectAsState()
     val duration by playerManager.duration.collectAsState()

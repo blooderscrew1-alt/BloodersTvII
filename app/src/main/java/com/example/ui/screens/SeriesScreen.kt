@@ -73,7 +73,7 @@ fun SeriesScreen(
 ) {
     val allItems by repository.items.collectAsState()
     val history by repository.history.collectAsState()
-    val watchedIds = remember(history) { history.map { it.itemId }.toSet() }
+    val watchedEpisodeIds by repository.watchedEpisodeIds.collectAsState()
     val isContentLoaded by repository.isContentLoaded.collectAsState()
     val nsrHistory by repository.nsrHistory.collectAsState()
     val vimeusHistory by repository.vimeusHistory.collectAsState()
@@ -98,7 +98,7 @@ fun SeriesScreen(
         IptvSeriesDetailScreen(
             series = series,
             primaryColor = primaryColor,
-            watchedIds = watchedIds,
+            watchedIds = watchedEpisodeIds,
             onPlayItem = onPlayItem,
             onPlayEpisode = onPlaySeriesEpisode,
             onBack = { selectedSeries = null }

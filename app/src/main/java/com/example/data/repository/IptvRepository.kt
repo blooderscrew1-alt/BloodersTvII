@@ -51,6 +51,9 @@ class IptvRepository(private val context: Context) {
     private val _history = MutableStateFlow<List<WatchHistoryItem>>(emptyList())
     val history: StateFlow<List<WatchHistoryItem>> = _history.asStateFlow()
 
+    private val _watchedEpisodeIds = MutableStateFlow<Set<String>>(emptySet())
+    val watchedEpisodeIds: StateFlow<Set<String>> = _watchedEpisodeIds.asStateFlow()
+
     private val _watchedNsr = MutableStateFlow<Set<String>>(emptySet())
     val watchedNsr: StateFlow<Set<String>> = _watchedNsr.asStateFlow()
 
@@ -101,6 +104,7 @@ class IptvRepository(private val context: Context) {
     init {
         loadSettings()
         loadHistory()
+        _watchedEpisodeIds.value = prefs.getStringSet("watched_episode_ids", emptySet()) ?: emptySet()
         loadFavorites()
         loadWatchedNsr()
         loadNsrHistory()
@@ -333,12 +337,27 @@ class IptvRepository(private val context: Context) {
                         )
                     )
                 }
-                _history.value = list.sortedByDescending { it.lastWatchedTimestamp }
+                _history.value = dedupeSeriesHistory(
+                    list.sortedByDescending { it.lastWatchedTimestamp }
+                )
                 return
             } catch (_: Throwable) {}
         }
 
         _history.value = emptyList()
+    }
+
+    private fun dedupeSeriesHistory(list: List<WatchHistoryItem>): List<WatchHistoryItem> {
+        val seenSeries = mutableSetOf<String>()
+        return list.sortedByDescending { it.lastWatchedTimestamp }.filter { entry ->
+            if (entry.type != ItemType.SERIES) {
+                true
+            } else {
+                val key = com.example.data.iptv.IptvSeriesGrouping.seriesKeyFromName(entry.title)
+                    .ifBlank { entry.title.lowercase() }
+                seenSeries.add(key)
+            }
+        }
     }
 
     private fun getPlaylistsFile(): File = File(context.filesDir, "user_playlists.json")
@@ -746,6 +765,18 @@ class IptvRepository(private val context: Context) {
     fun recordWatchHistory(item: PlaylistItem, positionMs: Long, durationMs: Long) {
         val currentList = _history.value.toMutableList()
         currentList.removeAll { it.itemId == item.id }
+        if (item.type == ItemType.SERIES) {
+            val key = com.example.data.iptv.IptvSeriesGrouping.seriesKeyFromName(item.name)
+            currentList.removeAll {
+                it.type == ItemType.SERIES &&
+                    com.example.data.iptv.IptvSeriesGrouping.seriesKeyFromName(it.title) == key
+            }
+            if (key.isNotBlank()) {
+                val updated = _watchedEpisodeIds.value + item.id
+                _watchedEpisodeIds.value = updated
+                prefs.edit().putStringSet("watched_episode_ids", updated).apply()
+            }
+        }
 
         val newEntry = WatchHistoryItem(
             itemId = item.id,
@@ -760,7 +791,7 @@ class IptvRepository(private val context: Context) {
         )
         currentList.add(0, newEntry)
 
-        val trimmed = currentList.take(50)
+        val trimmed = dedupeSeriesHistory(currentList).take(50)
         _history.value = trimmed
 
         repoScope.launch {
@@ -864,6 +895,7 @@ class IptvRepository(private val context: Context) {
 
     fun clearHistory() {
         _history.value = emptyList()
+        _watchedEpisodeIds.value = emptySet()
         _watchedNsr.value = emptySet()
         _nsrHistory.value = emptyList()
         _vimeusWatched.value = emptySet()
@@ -872,6 +904,7 @@ class IptvRepository(private val context: Context) {
         _unlimplayHistory.value = emptyList()
         prefs.edit()
             .remove("watch_history_json")
+            .remove("watched_episode_ids")
             .remove("watched_nsr_keys")
             .remove("nsr_history_json")
             .remove("watched_vimeus_keys")
