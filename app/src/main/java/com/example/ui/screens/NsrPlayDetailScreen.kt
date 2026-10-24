@@ -126,13 +126,8 @@ fun NsrPlayDetailScreen(
     var reloadTick by remember { mutableIntStateOf(0) }
 
     var selectedSeasonNumber by remember { mutableIntStateOf(1) }
-    var selectedEpisode by remember { mutableStateOf<NsrEpisode?>(null) }
-    var episodeServers by remember { mutableStateOf<List<NsrServer>>(emptyList()) }
-    var isLoadingServers by remember { mutableStateOf(false) }
-    var serverError by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     BackHandler { onBack() }
 
@@ -162,10 +157,15 @@ fun NsrPlayDetailScreen(
         }
     }
 
-    fun openPlayer(server: NsrServer, label: String, item: NsrMedia) {
+    fun openNsrPage(
+        item: NsrMedia,
+        season: Int? = null,
+        episode: Int? = null,
+        label: String = item.title
+    ) {
         onPlayed(item)
         val intent = Intent(context, PlayerWebActivity::class.java).apply {
-            putExtra(PlayerWebActivity.EXTRA_URL, server.embedUrl)
+            putExtra(PlayerWebActivity.EXTRA_URL, repository.webPlayerUrl(item, season, episode))
             putExtra(PlayerWebActivity.EXTRA_TITLE, label)
             putExtra(PlayerWebActivity.EXTRA_REFERER, "https://nsrplay.space/")
         }
@@ -320,29 +320,35 @@ fun NsrPlayDetailScreen(
                 if (info.type == NsrMediaType.MOVIE) {
                     item {
                         Text(
-                            text = "Servidores disponibles",
+                            text = "Reproductor",
                             color = Color.White,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
 
-                    if (info.servers.isEmpty()) {
-                        item {
-                            Text(
-                                text = "NSRPlay no devolvió servidores para este título. Suele pasar cuando el proveedor retiró el enlace; prueba otro título.",
-                                color = Color(0xFF8F9DAA),
-                                fontSize = 11.sp
+                    item {
+                        Button(
+                            onClick = {
+                                openNsrPage(info, label = info.title)
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = primaryColor,
+                                contentColor = Color.Black
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
                             )
-                        }
-                    } else {
-                        items(info.servers) { server ->
-                            NsrServerRow(
-                                server = server,
-                                primaryColor = primaryColor,
-                                onClick = {
-                                    openPlayer(server, "${info.title} · ${server.language}", info)
-                                }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Ver en NSRPlay",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -375,9 +381,6 @@ fun NsrPlayDetailScreen(
                                         primaryColor = primaryColor,
                                         onClick = {
                                             selectedSeasonNumber = season.number
-                                            selectedEpisode = null
-                                            episodeServers = emptyList()
-                                            serverError = null
                                         }
                                     )
                                 }
@@ -400,79 +403,17 @@ fun NsrPlayDetailScreen(
                         items(season?.episodes ?: emptyList()) { episode ->
                             NsrEpisodeRow(
                                 episode = episode,
-                                selected = selectedEpisode?.number == episode.number &&
-                                    selectedEpisode?.season == episode.season,
+                                selected = false,
                                 primaryColor = primaryColor,
                                 onClick = {
-                                    selectedEpisode = episode
-                                    episodeServers = emptyList()
-                                    serverError = null
-                                    isLoadingServers = true
-                                    scope.launch {
-                                        try {
-                                            episodeServers = repository.getServers(
-                                                info.slug,
-                                                episode.season,
-                                                episode.number
-                                            )
-                                            serverError = null
-                                        } catch (e: NsrPlayException) {
-                                            serverError = e.message
-                                        } catch (_: Throwable) {
-                                            serverError = "No se pudieron obtener los servidores."
-                                        } finally {
-                                            isLoadingServers = false
-                                        }
-                                    }
+                                    openNsrPage(
+                                        item = info,
+                                        season = episode.season,
+                                        episode = episode.number,
+                                        label = "${info.title} T${episode.season}E${episode.number}"
+                                    )
                                 }
                             )
-                        }
-                    }
-
-                    val episode = selectedEpisode
-                    if (episode != null) {
-                        item {
-                            Text(
-                                text = "Servidores · T${episode.season} E${episode.number}",
-                                color = Color.White,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
-                        }
-
-                        if (isLoadingServers) {
-                            item { LoadingState("Buscando servidores...") }
-                        } else if (serverError != null) {
-                            item {
-                                Text(
-                                    text = serverError ?: "",
-                                    color = Color(0xFFFF7A8A),
-                                    fontSize = 11.sp
-                                )
-                            }
-                        } else if (episodeServers.isEmpty()) {
-                            item {
-                                Text(
-                                    text = "Este episodio no tiene servidores disponibles ahora mismo.",
-                                    color = Color(0xFF8F9DAA),
-                                    fontSize = 11.sp
-                                )
-                            }
-                        } else {
-                            items(episodeServers) { server ->
-                                NsrServerRow(
-                                    server = server,
-                                    primaryColor = primaryColor,
-                                    onClick = {
-                                        openPlayer(
-                                            server,
-                                            "${info.title} T${episode.season}E${episode.number} · ${server.language}",
-                                            info
-                                        )
-                                    }
-                                )
-                            }
                         }
                     }
                 }

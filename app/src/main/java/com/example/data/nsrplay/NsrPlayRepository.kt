@@ -52,6 +52,19 @@ class NsrPlayRepository(context: Context) {
         )
     }
 
+    fun webPlayerUrl(
+        media: NsrMedia,
+        season: Int? = null,
+        episode: Int? = null
+    ): String {
+        val base = config.baseUrl().trimEnd('/')
+        return if (media.type == NsrMediaType.SERIES) {
+            "$base/embed/tv/${media.slug}/${season ?: 1}/${episode ?: 1}"
+        } else {
+            "$base/embed/movie/${media.slug}"
+        }
+    }
+
     suspend fun search(query: String): List<NsrMedia> = withContext(Dispatchers.IO) {
         if (query.isBlank()) return@withContext emptyList()
         val json = get("/api/v1/content/search", mapOf("s" to query.trim()))
