@@ -94,6 +94,19 @@ class WatchedContentTest {
     }
 
     @Test
+    fun `adult unlock lasts for the current session only`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val repository = IptvRepository(context)
+        assertFalse(repository.adultUnlocked.value)
+
+        repository.unlockAdultContent()
+        assertTrue(repository.adultUnlocked.value)
+
+        val freshSession = IptvRepository(context)
+        assertFalse(freshSession.adultUnlocked.value)
+    }
+
+    @Test
     fun `last live TV channel is persisted`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = IptvRepository(context)

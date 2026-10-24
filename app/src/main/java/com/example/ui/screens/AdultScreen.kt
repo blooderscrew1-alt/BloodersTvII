@@ -49,13 +49,13 @@ fun AdultScreen(
 ) {
     val allItems by repository.items.collectAsState()
     val parentalPin by repository.parentalPin.collectAsState()
+    val adultUnlocked by repository.adultUnlocked.collectAsState()
     val adultItems = remember(allItems) {
         allItems
             .filter { it.type == ItemType.ADULT && !it.isHidden }
             .sortedWith(compareBy({ it.type.ordinal }, { it.name.lowercase() }))
     }
 
-    var unlocked by remember { mutableStateOf(false) }
     var showPinDialog by remember { mutableStateOf(false) }
 
     if (adultItems.isEmpty()) {
@@ -92,7 +92,7 @@ fun AdultScreen(
         return
     }
 
-    if (!unlocked) {
+    if (!adultUnlocked) {
         Box(
             modifier = modifier
                 .fillMaxSize()
@@ -148,7 +148,7 @@ fun AdultScreen(
                 title = "Contenido para adultos",
                 subtitle = "Ingresa el PIN de 4 dígitos para desbloquear esta sección.",
                 onSuccess = {
-                    unlocked = true
+                    repository.unlockAdultContent()
                     showPinDialog = false
                 },
                 onDismiss = { showPinDialog = false },

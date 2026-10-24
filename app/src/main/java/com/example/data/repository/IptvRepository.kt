@@ -89,6 +89,9 @@ class IptvRepository(private val context: Context) {
     private val _parentalPin = MutableStateFlow("0000")
     val parentalPin: StateFlow<String> = _parentalPin.asStateFlow()
 
+    private val _adultUnlocked = MutableStateFlow(false)
+    val adultUnlocked: StateFlow<Boolean> = _adultUnlocked.asStateFlow()
+
     private val _themeAccent = MutableStateFlow(ThemeAccent.NEON_LIME)
     val themeAccent: StateFlow<ThemeAccent> = _themeAccent.asStateFlow()
 
@@ -841,7 +844,16 @@ class IptvRepository(private val context: Context) {
 
     fun setParentalPin(pin: String) {
         _parentalPin.value = pin
+        _adultUnlocked.value = false
         prefs.edit().putString("parental_pin", pin).apply()
+    }
+
+    fun unlockAdultContent() {
+        _adultUnlocked.value = true
+    }
+
+    fun lockAdultContent() {
+        _adultUnlocked.value = false
     }
 
     fun toggleCategoryLock(category: String) {

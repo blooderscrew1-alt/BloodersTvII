@@ -20,7 +20,7 @@ Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propia
 - **Deslizador de tamaño de pósters** a la derecha de los filtros de búsqueda; el tamaño elegido se guarda y se aplica a los tres carruseles (IPTV, Vimeus y NSRPlay).
 - **La barra de búsqueda se oculta al pulsar Enter/OK o la lupa**, para dejar más espacio a los resultados. Un icono de lupa a la izquierda de los filtros la vuelve a mostrar y enfoca el campo.
 - **Editor de listas IPTV**: renombrar la lista, copiar su enlace M3U/Xtream, reclasificar toda la lista o una categoría entre TV/Películas/Series/**Adultos**, ocultar/mostrar categorías y renombrarlas.
-- **Pestaña Adultos** protegida con PIN, separada de TV/Películas/Series y de la búsqueda general.
+- **Pestaña Adultos** protegida con PIN, separada de TV/Películas/Series y de la búsqueda general; el PIN se pide una sola vez por sesión de la app.
 - **Nuevo icono BloodersTV II** en todas las densidades, con fondo adaptativo negro y versión redonda.
 - **Películas como pestaña inicial**: al abrir la app se entra directamente a Películas en lugar de Televisión.
 - **Último canal TV**: al abrir la app se restaura el último canal en vivo y su categoría; también se recuerda al cambiar de canal con el control dentro del reproductor.
@@ -232,7 +232,7 @@ app/src/main/java/com/example/
 ## Verificación realizada
 
 - `:app:assembleDebug` compila y genera APK.
-- 27 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`, `NsrPlayConfigStoreTest`, `ExtensionEngineTest`, `WatchedContentTest`, `VimeusBackupTest`).
+- 28 pruebas unitarias pasan (`ExampleUnitTest`, `ExampleRobolectricTest`, `NsrPlayTextTest`, `NsrPlayConfigStoreTest`, `ExtensionEngineTest`, `WatchedContentTest`, `VimeusBackupTest`).
 - UI probada en 1920×1080 (tablet/TV), 1080×1920 a 420 dpi (teléfono vertical) y 1920×1080 a 420 dpi (teléfono horizontal): cabecera, botón de listas, diálogo de alta y reproductor web.
 - NSRPlay verificado en producción dentro de Películas (badges `NSRPLAY`) y en la búsqueda global.
 - Vimeus verificado en producción: catálogo de películas, series y anime, detalle de serie con temporadas/episodios, reproducción embed y búsqueda “saul” → “Better Call Saul”.
