@@ -106,6 +106,30 @@ class WatchedContentTest {
     }
 
     @Test
+    fun `iptv series episodes are grouped into one series`() {
+        fun episode(name: String) = PlaylistItem(
+            name = name,
+            streamUrl = "https://example.com/$name.mp4",
+            category = "Series",
+            type = ItemType.SERIES,
+            sourceId = "series-test"
+        )
+
+        val groups = com.example.data.iptv.IptvSeriesGrouping.group(
+            listOf(
+                episode("Breaking Bad S01E01"),
+                episode("Breaking Bad S02E01"),
+                episode("Breaking Bad S02E02")
+            )
+        )
+
+        assertEquals(1, groups.size)
+        assertEquals("Breaking Bad", groups.first().title)
+        assertEquals(3, groups.first().episodes.size)
+        assertEquals(listOf(1, 2), groups.first().seasons)
+    }
+
+    @Test
     fun `m3u detects common series episode formats`() {
         val parser = com.example.data.parser.M3uParser
         assertEquals(

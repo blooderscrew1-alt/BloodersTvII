@@ -76,6 +76,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.data.iptv.IptvSearchResult
+import com.example.data.iptv.IptvSeries
+import com.example.data.iptv.IptvSeriesGrouping
 import com.example.data.model.ItemType
 import com.example.data.model.PlaylistItem
 import com.example.data.nsrplay.NsrMedia
@@ -144,6 +147,7 @@ fun SearchScreen(
     var unlimplayLoading by remember { mutableStateOf(false) }
     var unlimplayError by remember { mutableStateOf<String?>(null) }
     var selectedUnlimplay by remember { mutableStateOf<UnlimplayMedia?>(null) }
+    var selectedIptvSeries by remember { mutableStateOf<IptvSeries?>(null) }
 
     fun submitNsrSearch() {
         val cleanQuery = query.trim()
@@ -309,6 +313,16 @@ fun SearchScreen(
         }
     }
 
+    selectedIptvSeries?.let { series ->
+        IptvSeriesDetailScreen(
+            series = series,
+            primaryColor = primaryColor,
+            onPlayItem = onPlayItem,
+            onBack = { selectedIptvSeries = null }
+        )
+        return
+    }
+
     selectedNsr?.let { media ->
         NsrPlayDetailScreen(
             media = media,
@@ -378,7 +392,11 @@ fun SearchScreen(
         }
     }
 
-    val noLocal = filteredItems.isEmpty()
+    val iptvResults = remember(filteredItems) {
+        IptvSeriesGrouping.mergeSearchResults(filteredItems)
+    }
+
+    val noLocal = iptvResults.isEmpty()
     val iptvReady = iptvSubmittedQuery.isNotBlank() && iptvSubmittedQuery == query.trim()
     val noNsr = !showNsr || (nsrVisibleResults.isEmpty() && !nsrLoading && nsrError == null)
     val noVimeus = !showVimeus ||
@@ -392,21 +410,31 @@ fun SearchScreen(
         posterScale = savedPosterScale
     }
 
-    val iptvPosterItems = remember(filteredItems, watchedIds) {
-        filteredItems.map { media ->
-            SearchPosterItem(
-                key = "iptv:${media.id}",
-                title = media.name,
-                posterUrl = media.logoUrl,
-                typeLabel = when (media.type) {
-                    ItemType.LIVE -> "Canal"
-                    ItemType.MOVIE -> "Película"
-                    ItemType.SERIES -> "Serie"
-                    ItemType.ADULT -> "Adulto"
-                },
-                subtitle = media.category,
-                isWatched = watchedIds.contains(media.id)
-            )
+    val iptvPosterItems = remember(iptvResults, watchedIds) {
+        iptvResults.map { result ->
+            when (result) {
+                is IptvSearchResult.Single -> SearchPosterItem(
+                    key = "iptv:${result.item.id}",
+                    title = result.item.name,
+                    posterUrl = result.item.logoUrl,
+                    typeLabel = when (result.item.type) {
+                        ItemType.LIVE -> "Canal"
+                        ItemType.MOVIE -> "Película"
+                        ItemType.SERIES -> "Serie"
+                        ItemType.ADULT -> "Adulto"
+                    },
+                    subtitle = result.item.category,
+                    isWatched = watchedIds.contains(result.item.id)
+                )
+                is IptvSearchResult.SeriesGroup -> SearchPosterItem(
+                    key = "iptv:series:${result.series.key}",
+                    title = result.series.title,
+                    posterUrl = result.series.posterUrl,
+                    typeLabel = "Serie",
+                    subtitle = "${result.series.episodes.size} episodios · ${result.series.category}",
+                    isWatched = false
+                )
+            }
         }
     }
 
@@ -822,7 +850,7 @@ fun SearchScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
-                if (filteredItems.isNotEmpty()) {
+                if (iptvResults.isNotEmpty()) {
                     item {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -843,7 +871,7 @@ fun SearchScreen(
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "En tus listas IPTV · ${filteredItems.size} resultados",
+                                text = "En tus listas IPTV · ${iptvResults.size} resultados",
                                 color = Color.White,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
@@ -855,7 +883,18 @@ fun SearchScreen(
                             items = iptvPosterItems,
                             accentColor = NsrBadgeColor,
                             posterScale = posterScale,
-                            onOpen = { index -> onPlayItem(filteredItems[index]) }
+                            onOpen = { index ->
+                            when (val result = iptvResults[index]) {
+                                is IptvSearchResult.Single -> {
+                                    keyboard?.hide()
+                                    onPlayItem(result.item)
+                                }
+                                is IptvSearchResult.SeriesGroup -> {
+                                    keyboard?.hide()
+                                    selectedIptvSeries = result.series
+                                }
+                            }
+                        }
                         )
                     }
                 }

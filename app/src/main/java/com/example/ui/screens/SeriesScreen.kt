@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -42,6 +41,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.iptv.IptvSeries
+import com.example.data.iptv.IptvSeriesGrouping
 import com.example.data.model.ItemType
 import com.example.data.model.PlaylistItem
 import com.example.data.nsrplay.NsrMedia
@@ -56,7 +57,6 @@ import com.example.data.unlimplay.UnlimplayRepository
 import com.example.data.unlimplay.UnlimplayType
 import com.example.ui.components.ContinueWatchingGrid
 import com.example.ui.components.NsrPlayRow
-import com.example.ui.components.NumberedPosterCard
 import com.example.ui.components.StandardPosterCard
 
 @Composable
@@ -74,7 +74,6 @@ fun SeriesScreen(
     val vimeusHistory by repository.vimeusHistory.collectAsState()
     val unlimplayHistory by repository.unlimplayHistory.collectAsState()
     val watchedNsr by repository.watchedNsr.collectAsState()
-    val watchedIds = remember(history) { history.map { it.itemId }.toSet() }
 
     val context = LocalContext.current
     val nsrRepository = remember { NsrPlayRepository(context.applicationContext) }
@@ -84,9 +83,20 @@ fun SeriesScreen(
     var selectedNsr by remember { mutableStateOf<NsrMedia?>(null) }
     var selectedVimeus by remember { mutableStateOf<VimeusMedia?>(null) }
     var selectedUnlimplay by remember { mutableStateOf<UnlimplayMedia?>(null) }
+    var selectedSeries by remember { mutableStateOf<IptvSeries?>(null) }
 
     LaunchedEffect(Unit) {
         NsrPlayCatalogCache.ensureLoaded(context, NsrMediaType.SERIES)
+    }
+
+    selectedSeries?.let { series ->
+        IptvSeriesDetailScreen(
+            series = series,
+            primaryColor = primaryColor,
+            onPlayItem = onPlayItem,
+            onBack = { selectedSeries = null }
+        )
+        return
     }
 
     selectedUnlimplay?.let { media ->
@@ -211,8 +221,9 @@ fun SeriesScreen(
         return
     }
 
-    val seriesByCategory = remember(series) {
-        series.groupBy { it.category }
+    val seriesGroups = remember(series) { IptvSeriesGrouping.group(series) }
+    val seriesByCategory = remember(seriesGroups) {
+        seriesGroups.groupBy { it.category }
     }
     val categories = seriesByCategory.keys.toList()
 
@@ -271,7 +282,7 @@ fun SeriesScreen(
         }
 
         // Section: "■ Destacadas en tus Listas"
-        if (series.isNotEmpty()) {
+        if (seriesGroups.isNotEmpty()) {
             item {
                 Column {
                 Row(
@@ -291,12 +302,14 @@ fun SeriesScreen(
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                     contentPadding = PaddingValues(end = 16.dp)
                 ) {
-                    itemsIndexed(series.take(10), key = { _, item -> item.id }) { index, item ->
-                        NumberedPosterCard(
-                            item = item,
-                            rank = index + 1,
-                            isWatched = watchedIds.contains(item.id),
-                            onClick = { onPlayItem(item) },
+                    items(seriesGroups.take(10), key = { it.key }) { group ->
+                        StandardPosterCard(
+                            title = group.title,
+                            posterUrl = group.posterUrl,
+                            subtitle = "${group.episodes.size} episodios",
+                            badge = "SERIE",
+                            badgeColor = primaryColor,
+                            onClick = { selectedSeries = group },
                             primaryColor = primaryColor
                         )
                     }
@@ -328,13 +341,14 @@ fun SeriesScreen(
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                             contentPadding = PaddingValues(end = 16.dp)
                         ) {
-                            items(catSeries.take(15), key = { it.id }) { s ->
+                            items(catSeries.take(15), key = { it.key }) { group ->
                                 StandardPosterCard(
-                                    title = s.name,
-                                    posterUrl = s.logoUrl,
-                                    subtitle = s.category,
-                                    isWatched = watchedIds.contains(s.id),
-                                    onClick = { onPlayItem(s) },
+                                    title = group.title,
+                                    posterUrl = group.posterUrl,
+                                    subtitle = "${group.episodes.size} episodios",
+                                    badge = "SERIE",
+                                    badgeColor = primaryColor,
+                                    onClick = { selectedSeries = group },
                                     primaryColor = primaryColor
                                 )
                             }
