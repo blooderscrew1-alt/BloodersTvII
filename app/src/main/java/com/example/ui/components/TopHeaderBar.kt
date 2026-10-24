@@ -45,6 +45,7 @@ enum class AppTab(val label: String) {
     TELEVISION("Televisión"),
     PELICULAS("Películas"),
     SERIES("Series"),
+    ADULT("Adultos"),
     PLAYLISTS("Playlists"),
     AJUSTES("Ajustes")
 }

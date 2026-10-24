@@ -85,6 +85,12 @@ class WatchedContentTest {
         assertEquals(ItemType.MOVIE, item.type)
         assertEquals(true, item.isHidden)
         assertEquals("Películas", item.category)
+
+        repository.setCategoryType(source.id, "Películas", ItemType.ADULT)
+        assertEquals(
+            ItemType.ADULT,
+            repository.items.value.first { it.id == "editor-item" }.type
+        )
     }
 
     @Test

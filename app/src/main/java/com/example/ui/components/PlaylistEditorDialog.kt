@@ -216,6 +216,9 @@ fun PlaylistEditorDialog(
                 TypeChip("Series", wholeType == ItemType.SERIES, primaryColor) {
                     repository.setPlaylistItemsType(source.id, ItemType.SERIES)
                 }
+                TypeChip("Adultos", wholeType == ItemType.ADULT, primaryColor) {
+                    repository.setPlaylistItemsType(source.id, ItemType.ADULT)
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -305,6 +308,9 @@ fun PlaylistEditorDialog(
                             }
                             TypeChip("Series", category.type == ItemType.SERIES, primaryColor) {
                                 repository.setCategoryType(source.id, category.name, ItemType.SERIES)
+                            }
+                            TypeChip("Adultos", category.type == ItemType.ADULT, primaryColor) {
+                                repository.setCategoryType(source.id, category.name, ItemType.ADULT)
                             }
                         }
                     }

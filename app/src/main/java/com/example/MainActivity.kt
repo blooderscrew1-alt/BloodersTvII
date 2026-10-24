@@ -25,6 +25,7 @@ import com.example.data.player.SmartPlayerManager
 import com.example.data.repository.IptvRepository
 import com.example.ui.components.AppTab
 import com.example.ui.components.TopHeaderBar
+import com.example.ui.screens.AdultScreen
 import com.example.ui.screens.FullscreenPlayerScreen
 import com.example.ui.screens.MoviesScreen
 import com.example.ui.screens.PlaylistsScreen
@@ -176,6 +177,11 @@ fun MainApp(
                             onNavigateToPlaylists = {
                                 currentTab = AppTab.PLAYLISTS
                             },
+                            primaryColor = primaryColor
+                        )
+                        AppTab.ADULT -> AdultScreen(
+                            repository = repository,
+                            onPlayItem = { item -> startPlayback(item) },
                             primaryColor = primaryColor
                         )
                         AppTab.PLAYLISTS -> PlaylistsScreen(

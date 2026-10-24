@@ -5,7 +5,8 @@ import java.util.UUID
 enum class ItemType {
     LIVE,
     MOVIE,
-    SERIES
+    SERIES,
+    ADULT
 }
 
 data class PlaylistItem(
