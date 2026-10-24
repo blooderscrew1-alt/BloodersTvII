@@ -19,6 +19,7 @@ Cliente Android (teléfono, tablet, TV Box y Android TV) para listas IPTV propia
 - **Búsqueda global** con vista tipo cover-flow: póster central grande, laterales inclinados, borde de acento, reflejo y título/progreso sobre la carátula. Orden: IPTV → Vimeus → NSRPlay → **Unlimplay al final**.
 - **Deslizador de tamaño de pósters** a la derecha de los filtros de búsqueda; el tamaño elegido se guarda y se aplica a los tres carruseles (IPTV, Vimeus y NSRPlay).
 - **La barra de búsqueda se oculta al pulsar Enter/OK o la lupa**, para dejar más espacio a los resultados. Un icono de lupa a la izquierda de los filtros la vuelve a mostrar y enfoca el campo.
+- **Respaldo único**: la primera exportación elige la ubicación; las siguientes reemplazan ese mismo archivo en vez de crear copias con fecha.
 - **Editor de listas IPTV**: renombrar la lista, copiar su enlace M3U/Xtream, reclasificar toda la lista o una categoría entre TV/Películas/Series/**Adultos**, ocultar/mostrar categorías y renombrarlas.
 - **Pestaña Adultos** protegida con PIN, separada de TV/Películas/Series y de la búsqueda general; el PIN se pide una sola vez por sesión de la app.
 - **Nuevo icono BloodersTV II** en todas las densidades, con fondo adaptativo negro y versión redonda.

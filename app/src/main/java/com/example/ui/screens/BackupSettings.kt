@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -29,6 +30,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,9 +50,30 @@ import com.example.data.repository.IptvRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+
+private const val BACKUP_PREFS = "blooders_tv_prefs"
+private const val LAST_BACKUP_URI = "last_backup_uri"
+
+private fun writeBackupFile(context: Context, uri: Uri, json: String) {
+    val resolver = context.contentResolver
+    val stream = runCatching { resolver.openOutputStream(uri, "wt") }.getOrNull()
+        ?: resolver.openOutputStream(uri)
+        ?: throw IllegalStateException("No se pudo abrir el archivo de respaldo.")
+    stream.use { it.write(json.toByteArray(Charsets.UTF_8)) }
+}
+
+private fun rememberBackupUri(context: Context, uri: Uri) {
+    runCatching {
+        context.contentResolver.takePersistableUriPermission(
+            uri,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        )
+    }
+    context.getSharedPreferences(BACKUP_PREFS, Context.MODE_PRIVATE)
+        .edit()
+        .putString(LAST_BACKUP_URI, uri.toString())
+        .apply()
+}
 
 @Composable
 fun BackupSettingsContent(
@@ -60,11 +83,17 @@ fun BackupSettingsContent(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val backupPrefs = remember {
+        context.getSharedPreferences(BACKUP_PREFS, Context.MODE_PRIVATE)
+    }
 
     var isWorking by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     var messageIsError by remember { mutableStateOf(false) }
     var warnings by remember { mutableStateOf<List<String>>(emptyList()) }
+    var hasSavedLocation by remember {
+        mutableStateOf(!backupPrefs.getString(LAST_BACKUP_URI, null).isNullOrBlank())
+    }
 
     fun payload(): String = SettingsBackupManager.buildJson(context, repository)
 
@@ -77,18 +106,50 @@ fun BackupSettingsContent(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
+        isWorking = true
         scope.launch {
             try {
                 val json = withContext(Dispatchers.IO) { payload() }
                 withContext(Dispatchers.IO) {
-                    context.contentResolver.openOutputStream(uri)?.use { stream ->
-                        stream.write(json.toByteArray(Charsets.UTF_8))
-                    } ?: throw IllegalStateException("No se pudo crear el archivo.")
+                    writeBackupFile(context, uri, json)
                 }
-                status("Respaldo exportado correctamente.")
+                rememberBackupUri(context, uri)
+                hasSavedLocation = true
+                status("Respaldo exportado. Las próximas exportaciones reemplazarán este archivo.")
                 warnings = emptyList()
             } catch (t: Throwable) {
                 status(t.localizedMessage ?: "No se pudo exportar el respaldo.", true)
+            } finally {
+                isWorking = false
+            }
+        }
+    }
+
+    fun startExport() {
+        val savedUri = backupPrefs.getString(LAST_BACKUP_URI, null)
+        if (savedUri.isNullOrBlank()) {
+            exportLauncher.launch("blooders-respaldo.json")
+            return
+        }
+        isWorking = true
+        status("Actualizando el respaldo existente...")
+        scope.launch {
+            try {
+                val json = withContext(Dispatchers.IO) { payload() }
+                withContext(Dispatchers.IO) {
+                    writeBackupFile(context, Uri.parse(savedUri), json)
+                }
+                status("Respaldo actualizado: se reemplazó el archivo anterior.")
+                warnings = emptyList()
+            } catch (t: Throwable) {
+                // The document may have been deleted or its permission revoked;
+                // ask for a new location and remember it for future exports.
+                backupPrefs.edit().remove(LAST_BACKUP_URI).apply()
+                hasSavedLocation = false
+                status("No se pudo actualizar el respaldo. Elige de nuevo dónde guardarlo.", true)
+                exportLauncher.launch("blooders-respaldo.json")
+            } finally {
+                isWorking = false
             }
         }
     }
@@ -150,8 +211,7 @@ fun BackupSettingsContent(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
-                                val date = SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())
-                                exportLauncher.launch("blooders-respaldo-$date.json")
+                                startExport()
                             },
                             enabled = !isWorking,
                             colors = ButtonDefaults.buttonColors(
@@ -189,6 +249,31 @@ fun BackupSettingsContent(
                             Icon(Icons.Default.Share, contentDescription = null, tint = primaryColor, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("Compartir", color = primaryColor, fontSize = 11.sp)
+                        }
+                    }
+
+                    Text(
+                        text = "Cada exportación reemplaza el mismo archivo para no acumular copias. " +
+                            "La primera vez eliges la ubicación.",
+                        color = Color(0xFF7F91A1),
+                        fontSize = 10.sp
+                    )
+
+                    if (hasSavedLocation) {
+                        TextButton(
+                            onClick = {
+                                backupPrefs.edit().remove(LAST_BACKUP_URI).apply()
+                                hasSavedLocation = false
+                                status("Elige la nueva ubicación del respaldo.")
+                                exportLauncher.launch("blooders-respaldo.json")
+                            },
+                            enabled = !isWorking
+                        ) {
+                            Text(
+                                text = "Cambiar ubicación del respaldo",
+                                color = primaryColor,
+                                fontSize = 10.sp
+                            )
                         }
                     }
 
