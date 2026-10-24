@@ -95,6 +95,7 @@ import com.example.ui.components.SearchPosterCarousel
 import com.example.ui.components.SearchPosterItem
 import com.example.ui.components.UnlimplayBadgeColor
 import com.example.ui.components.VimeusBadgeColor
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -261,8 +262,14 @@ fun SearchScreen(
         val cleanQuery = query.trim()
         iptvSubmittedQuery = if (cleanQuery.length >= 2) cleanQuery else ""
         submitNsrSearch()
-        submitVimeusSearch()
-        submitUnlimplaySearch()
+        // Stagger the remaining providers so a low-end TV box is not
+        // saturated by three searches plus page loading at the same time.
+        scope.launch {
+            delay(300)
+            if (query.trim() == cleanQuery) submitUnlimplaySearch()
+            delay(300)
+            if (query.trim() == cleanQuery) submitVimeusSearch()
+        }
         keyboard?.hide()
         if (cleanQuery.length >= 2) {
             isSearchBarVisible = false
