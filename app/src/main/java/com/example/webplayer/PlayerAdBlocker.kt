@@ -82,8 +82,7 @@ object PlayerAdBlocker {
         "linkvertise.com"
     )
 
-    private val BLOCKED_KEYWORDS = listOf(
-        "/googleads/",
+    private val BLOCKED_KEYWORDS = listOf(        "/googleads/",
         "/pagead/",
         "/ad_status.js",
         "/ads/api/",
@@ -103,7 +102,29 @@ object PlayerAdBlocker {
         "clickadu"
     )
 
-    fun isAdUrl(url: String): Boolean {
+    /**
+     * Betting/casino brands that abuse video embeds with redirects and
+     * pop-unders. Matching is done against the host so numeric clones such as
+     * "1xbet-es.com" or "melbet-123.com" are covered by the brand token.
+     */
+    private val GAMBLING_HOST_TOKENS = listOf(
+        "sapphirebet", "1xbet", "melbet", "betandyou", "megapari", "linebet",
+        "22bet", "888starz", "helabet", "mostbet", "ivibet", "1win",
+        "vulkanvegas", "vulkan.bet", "betwinner", "betano", "bet365", "bwin",
+        "betway", "pin-up", "pinup", "parimatch", "leonbet", "marathonbet",
+        "fonbet", "betfair", "williamhill", "draftkings", "fanduel", "betmgm",
+        "caesars", "pokerstars", "betsson", "unibet", "nordicbet", "betclic",
+        "sportingbet", "bet9ja", "1xbit", "joycasino", "betmaster", "betobet",
+        "betpawa", "pixbet", "vaidebet", "betesporte", "betnacional", "blaze.bet",
+        "leovegas", "casumo", "jackpotcity", "royalvegas", "betcris",
+        "betplay", "codere", "caliente.mx", "playdoit", "strendus", "ganabet"
+    )
+
+    private val GAMBLING_HOST_SUFFIXES = setOf(
+        "bc.game", "stake.com", "gg.bet", "blaze.com", "blaze.bet"
+    )
+
+    fun isAdUrl(url: String, blockGamblingAds: Boolean = true): Boolean {
         if (url.isBlank()) return false
         val uri = try {
             Uri.parse(url)
@@ -114,6 +135,14 @@ object PlayerAdBlocker {
         val host = uri.host?.lowercase(Locale.ROOT) ?: return false
         for (suffix in BLOCKED_HOST_SUFFIXES) {
             if (host == suffix || host.endsWith(".$suffix")) return true
+        }
+        if (blockGamblingAds) {
+            for (suffix in GAMBLING_HOST_SUFFIXES) {
+                if (host == suffix || host.endsWith(".$suffix")) return true
+            }
+            for (token in GAMBLING_HOST_TOKENS) {
+                if (host.contains(token)) return true
+            }
         }
 
         val lowerUrl = url.lowercase(Locale.ROOT)

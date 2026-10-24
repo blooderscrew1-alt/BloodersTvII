@@ -132,6 +132,17 @@ class WatchedContentTest {
     }
 
     @Test
+    fun `gambling ad domains are blocked only with the reinforced option`() {
+        val blocker = com.example.webplayer.PlayerAdBlocker
+        assertTrue(blocker.isAdUrl("https://1xbet-es.com/banner"))
+        assertTrue(blocker.isAdUrl("https://melbet-123.com/pop"))
+        assertTrue(blocker.isAdUrl("https://sapphirebet.com/redirect"))
+        assertTrue(blocker.isAdUrl("https://bc.game/promo"))
+        assertFalse(blocker.isAdUrl("https://1xbet-es.com/banner", blockGamblingAds = false))
+        assertTrue(blocker.isAdUrl("https://doubleclick.net/ad", blockGamblingAds = false))
+    }
+
+    @Test
     fun `series history keeps only the latest episode per series`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val repository = IptvRepository(context)

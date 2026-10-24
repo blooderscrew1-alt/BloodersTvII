@@ -78,6 +78,9 @@ class IptvRepository(private val context: Context) {
     private val _searchPosterScale = MutableStateFlow(0.5f)
     val searchPosterScale: StateFlow<Float> = _searchPosterScale.asStateFlow()
 
+    private val _blockGamblingAds = MutableStateFlow(true)
+    val blockGamblingAds: StateFlow<Boolean> = _blockGamblingAds.asStateFlow()
+
     var lastTvChannelId: String? = prefs.getString("last_tv_channel_id", null)
         private set
     var lastTvCategory: String? = prefs.getString("last_tv_category", null)
@@ -288,6 +291,7 @@ class IptvRepository(private val context: Context) {
     private fun loadSettings() {
         val pin = prefs.getString("parental_pin", "0000") ?: "0000"
         _parentalPin.value = pin
+        _blockGamblingAds.value = prefs.getBoolean("block_gambling_ads", true)
 
         val locked = prefs.getStringSet("locked_categories", setOf("Adultos", "18+", "XXX")) ?: emptySet()
         _lockedCategories.value = locked
@@ -957,6 +961,11 @@ class IptvRepository(private val context: Context) {
         val clean = scale.coerceIn(0f, 1f)
         _searchPosterScale.value = clean
         prefs.edit().putFloat("search_poster_scale", clean).apply()
+    }
+
+    fun setBlockGamblingAds(enabled: Boolean) {
+        _blockGamblingAds.value = enabled
+        prefs.edit().putBoolean("block_gambling_ads", enabled).apply()
     }
 
     fun rememberTvChannel(item: PlaylistItem, category: String? = null) {

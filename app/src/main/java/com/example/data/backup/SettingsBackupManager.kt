@@ -74,6 +74,7 @@ object SettingsBackupManager {
             put("themeAccent", repository.themeAccent.value.name)
             put("bufferMode", repository.bufferMode.value.name)
             put("searchPosterScale", repository.searchPosterScale.value)
+            put("blockGamblingAds", repository.blockGamblingAds.value)
             put("parentalPin", repository.parentalPin.value)
             put("lockedCategories", JSONArray(repository.lockedCategories.value.toList()))
             put("favorites", JSONArray(repository.favorites.value.toList()))
@@ -140,6 +141,9 @@ object SettingsBackupManager {
                 repository.setSearchPosterScale(
                     settings.optDouble("searchPosterScale", 0.5).toFloat()
                 )
+            }
+            if (settings.has("blockGamblingAds")) {
+                repository.setBlockGamblingAds(settings.optBoolean("blockGamblingAds", true))
             }
             settings.optString("parentalPin").takeIf { it.matches(Regex("\\d{4}")) }
                 ?.let { repository.setParentalPin(it) }

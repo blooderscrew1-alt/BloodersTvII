@@ -111,6 +111,7 @@ class PlayerWebActivity : ComponentActivity() {
     private var startUrl: String = ""
     private var referer: String = DEFAULT_REFERER
     private var useIframe: Boolean = false
+    private var blockGamblingAds: Boolean = true
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
 
@@ -133,6 +134,8 @@ class PlayerWebActivity : ComponentActivity() {
         startUrl = intent.getStringExtra(EXTRA_URL).orEmpty()
         referer = intent.getStringExtra(EXTRA_REFERER).orEmpty().ifBlank { DEFAULT_REFERER }
         useIframe = intent.getBooleanExtra(EXTRA_USE_IFRAME, false)
+        blockGamblingAds = getSharedPreferences("blooders_tv_prefs", MODE_PRIVATE)
+            .getBoolean("block_gambling_ads", true)
         pageTitle = intent.getStringExtra(EXTRA_TITLE).orEmpty()
         desktopMode = isTelevisionOrLargeScreen()
 
@@ -262,7 +265,7 @@ class PlayerWebActivity : ComponentActivity() {
                 val url = request?.url?.toString() ?: return null
                 val blockedByExtension = request?.isForMainFrame == false &&
                     extensionNetworkFilter.shouldBlock(url)
-                if (PlayerAdBlocker.isAdUrl(url) || blockedByExtension) {
+                if (PlayerAdBlocker.isAdUrl(url, blockGamblingAds) || blockedByExtension) {
                     return WebResourceResponse(
                         "text/plain",
                         "UTF-8",
@@ -281,7 +284,7 @@ class PlayerWebActivity : ComponentActivity() {
                     // intent://, market://, tg:// ... are almost always ad redirects.
                     return true
                 }
-                if (PlayerAdBlocker.isAdUrl(url)) return true
+                if (PlayerAdBlocker.isAdUrl(url, blockGamblingAds)) return true
                 if (extensionNetworkFilter.shouldBlock(url)) return true
 
                 // Extension redirect rules apply to top-level navigations.

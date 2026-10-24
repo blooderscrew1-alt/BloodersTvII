@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cached
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
@@ -75,6 +76,7 @@ fun SettingsScreen(
     val bufferMode by repository.bufferMode.collectAsState()
     val parentalPin by repository.parentalPin.collectAsState()
     val lockedCategories by repository.lockedCategories.collectAsState()
+    val blockGamblingAds by repository.blockGamblingAds.collectAsState()
 
     var cacheBytes by remember { mutableLongStateOf(SmartPlayerManager.getCacheSizeBytes(context)) }
     var newPinText by remember { mutableStateOf("") }
@@ -371,6 +373,42 @@ fun SettingsScreen(
         }
 
         // Section 5: Watch History Cleaner
+        item {
+            SettingsCard(
+                title = "Bloqueo de anuncios de apuestas y casino",
+                subtitle = "Bloquea dominios publicitarios de apuestas, casino y clones con subdominios variables.",
+                icon = Icons.Default.Block,
+                primaryColor = primaryColor
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (blockGamblingAds) "Bloqueo reforzado activado" else "Bloqueo reforzado desactivado",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Se aplica a NSRPlay, Vimeus y Unlimplay. Puede requerir reiniciar el reproductor.",
+                            color = Color(0xFF8F9DAA),
+                            fontSize = 10.sp
+                        )
+                    }
+                    Switch(
+                        checked = blockGamblingAds,
+                        onCheckedChange = { repository.setBlockGamblingAds(it) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.Black,
+                            checkedTrackColor = primaryColor
+                        )
+                    )
+                }
+            }
+        }
+
         item {
             SettingsCard(
                 title = "Historial de Vista",
