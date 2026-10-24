@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -58,6 +59,8 @@ import com.example.data.unlimplay.UnlimplayType
 import com.example.ui.components.ContinueWatchingGrid
 import com.example.ui.components.NsrPlayRow
 import com.example.ui.components.StandardPosterCard
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 fun SeriesScreen(
@@ -221,7 +224,21 @@ fun SeriesScreen(
         return
     }
 
-    val seriesGroups = remember(series) { IptvSeriesGrouping.group(series) }
+    var seriesGroups by remember { mutableStateOf<List<IptvSeries>>(emptyList()) }
+    var isGrouping by remember { mutableStateOf(false) }
+    LaunchedEffect(series) {
+        if (series.isEmpty()) {
+            seriesGroups = emptyList()
+            isGrouping = false
+            return@LaunchedEffect
+        }
+        isGrouping = true
+        val grouped = withContext(Dispatchers.Default) {
+            IptvSeriesGrouping.groupCached(allItems)
+        }
+        seriesGroups = grouped
+        isGrouping = false
+    }
     val seriesByCategory = remember(seriesGroups) {
         seriesGroups.groupBy { it.category }
     }
@@ -279,6 +296,27 @@ fun SeriesScreen(
                     )
                 }
             )
+        }
+
+        if (isGrouping) {
+            item {
+                Row(
+                    modifier = Modifier.padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        color = primaryColor,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Agrupando series...",
+                        color = Color(0xFF8F9DAA),
+                        fontSize = 11.sp
+                    )
+                }
+            }
         }
 
         // Section: "■ Destacadas en tus Listas"

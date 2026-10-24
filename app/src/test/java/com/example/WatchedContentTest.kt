@@ -119,14 +119,16 @@ class WatchedContentTest {
             listOf(
                 episode("Breaking Bad S01E01"),
                 episode("Breaking Bad S02E01"),
-                episode("Breaking Bad S02E02")
+                episode("Breaking Bad S02E02"),
+                episode("Breaking Bad S03 Breaking Bad"),
+                episode("Breaking Bad S04 Breaking Bad")
             )
         )
 
         assertEquals(1, groups.size)
         assertEquals("Breaking Bad", groups.first().title)
-        assertEquals(3, groups.first().episodes.size)
-        assertEquals(listOf(1, 2), groups.first().seasons)
+        assertEquals(5, groups.first().episodes.size)
+        assertEquals(listOf(1, 2, 3, 4), groups.first().seasons)
     }
 
     @Test

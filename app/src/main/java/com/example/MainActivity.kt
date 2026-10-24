@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.example.data.iptv.IptvSeriesGrouping
 import com.example.data.model.PlaylistItem
 import com.example.data.model.ItemType
 import com.example.data.player.SmartPlayerManager
@@ -34,6 +36,8 @@ import com.example.ui.screens.SeriesScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.TelevisionScreen
 import com.example.ui.theme.MyApplicationTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
@@ -51,6 +55,18 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeAccent by repository.themeAccent.collectAsState()
             val primaryColor = Color(themeAccent.primaryHex)
+            val allItems by repository.items.collectAsState()
+            val contentLoaded by repository.isContentLoaded.collectAsState()
+
+            LaunchedEffect(contentLoaded, allItems) {
+                if (contentLoaded && allItems.isNotEmpty()) {
+                    // Warm the Series grouping once, after the first frame, so
+                    // opening the Series tab does not pay the grouping cost.
+                    withContext(Dispatchers.Default) {
+                        IptvSeriesGrouping.groupCached(allItems)
+                    }
+                }
+            }
 
             MyApplicationTheme {
                 MainApp(
