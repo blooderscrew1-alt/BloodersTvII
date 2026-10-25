@@ -1,4 +1,4 @@
-﻿# BloodersTv II
+# BloodersTv II
 
 Cliente Android (telÃƒÂ©fono, tablet, TV Box y Android TV) para listas IPTV propias y para el catÃƒÂ¡logo de **NSRPlay**. La prioridad del proyecto es una navegaciÃƒÂ³n fluida incluso en equipos de gama baja: listas ligeras, sin animaciones costosas, sin servicios que no se usan y un reproductor web enfocado.
 
@@ -271,3 +271,6 @@ app/src/main/java/com/example/
 ## Aviso
 
 BloodersTv no aloja, sube ni distribuye contenido. Las listas IPTV son responsabilidad del usuario y NSRPlay indexa enlaces publicados por terceros. Verifica que tu uso cumpla las leyes de tu paÃƒÂ­s y las condiciones de cada proveedor.
+
+- **Vimeus con episodios**: usa `imdb_id` cuando el título viene de la búsqueda por IMDb, por lo que las series muestran temporadas y capítulos como NSRPlay y Unlimplay.
+- **Búsqueda NSRPlay más rápida**: los resultados de IMDb se muestran directamente como tarjetas y el detalle se carga solo al abrir el título, eliminando varias llamadas lentas a `/content/info` durante la búsqueda.

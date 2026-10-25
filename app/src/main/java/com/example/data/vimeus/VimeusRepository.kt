@@ -66,11 +66,18 @@ class VimeusRepository(context: Context) {
         )
     }
 
-    suspend fun getEpisodes(tmdbId: Long): List<VimeusEpisode> = withContext(Dispatchers.IO) {
-        if (tmdbId <= 0L) return@withContext emptyList()
+    suspend fun getEpisodes(
+        tmdbId: Long? = null,
+        imdbId: String? = null
+    ): List<VimeusEpisode> = withContext(Dispatchers.IO) {
+        val cacheKey = when {
+            tmdbId != null && tmdbId > 0L -> "tmdb:$tmdbId"
+            !imdbId.isNullOrBlank() -> "imdb:$imdbId"
+            else -> return@withContext emptyList()
+        }
         val now = System.currentTimeMillis()
         synchronized(episodeCache) {
-            episodeCache[tmdbId]?.let { (timestamp, cached) ->
+            episodeCache[cacheKey]?.let { (timestamp, cached) ->
                 if (now - timestamp < EPISODE_CACHE_TTL_MS) return@withContext cached
             }
         }
@@ -78,10 +85,13 @@ class VimeusRepository(context: Context) {
         var page = 1
         var totalPages = 1
         while (page <= totalPages && page <= 20) {
-            val json = get(
-                "/api/listing/episodes",
-                mapOf("tmdb_id" to tmdbId.toString(), "page" to page.toString())
-            )
+            val params = mutableMapOf("page" to page.toString())
+            if (tmdbId != null && tmdbId > 0L) {
+                params["tmdb_id"] = tmdbId.toString()
+            } else {
+                params["imdb_id"] = imdbId.orEmpty()
+            }
+            val json = get("/api/listing/episodes", params)
             val data = json.optJSONObject("data") ?: JSONObject()
             val array = data.optJSONArray("result") ?: data.optJSONArray("episodes") ?: JSONArray()
             totalPages = data.optInt("pages", data.optJSONObject("pagination")?.optInt("total_pages", 1) ?: 1)
@@ -104,7 +114,7 @@ class VimeusRepository(context: Context) {
         val result = episodes.distinctBy { it.season to it.episode }
             .sortedWith(compareBy({ it.season }, { it.episode }))
         synchronized(episodeCache) {
-            episodeCache[tmdbId] = System.currentTimeMillis() to result
+            episodeCache[cacheKey] = System.currentTimeMillis() to result
         }
         result
     }
@@ -242,6 +252,6 @@ class VimeusRepository(context: Context) {
 
     companion object {
         private const val EPISODE_CACHE_TTL_MS = 5 * 60 * 1000L
-        private val episodeCache = mutableMapOf<Long, Pair<Long, List<VimeusEpisode>>>()
+        private val episodeCache = mutableMapOf<String, Pair<Long, List<VimeusEpisode>>>()
     }
 }

@@ -100,18 +100,29 @@ class NsrPlayRepository(context: Context) {
         }
 
         // 1) IMDb suggestions turn a partial query ("saul") into full titles
-        //    ("Better Call Saul") that NSRPlay can resolve by slug.
+        //    ("Better Call Saul"). Build the cards directly from the suggestion
+        //    instead of doing one slow /content/info request per title; the
+        //    detail screen loads metadata lazily when the user opens it.
         val imdbResults = mutableListOf<NsrMedia>()
-        for (suggestion in fetchImdbSuggestions(cleanQuery, preferredType).take(3)) {
-            val info = tryInfo(slugFromTitle(suggestion.title), suggestion.type) ?: continue
-            if (!titleMatchesQuery(info.title, cleanQuery)) continue
+        for (suggestion in fetchImdbSuggestions(cleanQuery, preferredType).take(12)) {
+            if (preferredType != null && suggestion.type != preferredType) continue
+            if (!titleMatchesQuery(suggestion.title, cleanQuery)) continue
+            val slug = slugFromTitle(suggestion.title)
+            if (slug.isBlank()) continue
             imdbResults.add(
-                info.copy(
-                    poster = info.poster?.takeIf { it.isNotBlank() } ?: suggestion.poster,
-                    year = info.year ?: suggestion.year
+                NsrMedia(
+                    id = slug,
+                    slug = slug,
+                    title = suggestion.title,
+                    poster = suggestion.poster,
+                    rating = null,
+                    type = suggestion.type,
+                    provider = "IMDb",
+                    url = null,
+                    year = suggestion.year
                 )
             )
-            if (imdbResults.size >= 5) break
+            if (imdbResults.size >= 8) break
         }
         if (imdbResults.isNotEmpty()) {
             val result = imdbResults.distinctBy { it.type.apiValue + ":" + it.slug }.take(30)

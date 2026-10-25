@@ -79,14 +79,23 @@ fun VimeusDetailScreen(
 
     BackHandler { onBack() }
 
-    LaunchedEffect(media.id, media.tmdbId) {
-        if (media.type == VimeusType.MOVIE || media.tmdbId == null) return@LaunchedEffect
+    LaunchedEffect(media.id, media.tmdbId, media.imdbId) {
+        if (media.type == VimeusType.MOVIE) return@LaunchedEffect
+        if (media.tmdbId == null && media.imdbId.isNullOrBlank()) {
+            episodesError = "No se pudo identificar la serie para cargar sus episodios."
+            return@LaunchedEffect
+        }
         loadingEpisodes = true
         episodesError = null
         try {
-            val result = repository.getEpisodes(media.tmdbId)
+            val result = repository.getEpisodes(media.tmdbId, media.imdbId)
             episodes = result
-            selectedSeason = result.firstOrNull()?.season ?: 1
+            selectedSeason = result.firstOrNull { it.season == 1 }?.season
+                ?: result.firstOrNull()?.season
+                ?: 1
+            if (result.isEmpty()) {
+                episodesError = "Vimeus no devolvió episodios para esta serie."
+            }
         } catch (e: VimeusException) {
             episodesError = e.message
         } catch (_: Throwable) {
