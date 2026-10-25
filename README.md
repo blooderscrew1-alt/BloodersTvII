@@ -274,3 +274,4 @@ BloodersTv no aloja, sube ni distribuye contenido. Las listas IPTV son responsab
 
 - **Vimeus con episodios**: usa `imdb_id` cuando el título viene de la búsqueda por IMDb, por lo que las series muestran temporadas y capítulos como NSRPlay y Unlimplay.
 - **Búsqueda NSRPlay más rápida**: los resultados de IMDb se muestran directamente como tarjetas y el detalle se carga solo al abrir el título, eliminando varias llamadas lentas a `/content/info` durante la búsqueda.
+- **Ad Accelerator predeterminada**: extensión activa por defecto que acelera el video del anuncio, lo silencia y pulsa «Saltar anuncio» en cuanto aparece; se eliminó Dark Reader.

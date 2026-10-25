@@ -133,20 +133,86 @@ object ExtensionEngine {
             """.trimIndent()
         ),
         WebExtension(
-            id = "ext_dark_reader",
-            name = "Dark Reader",
-            description = "Modo oscuro para páginas y reproductores, con menor brillo.",
-            author = "Dark Reader (Port)",
-            version = "4.9.86",
-            iconEmoji = "🌙",
-            isEnabled = false,
+            id = "ext_ad_accelerator",
+            name = "Ad Accelerator",
+            description = "Acelera los anuncios y pulsa automáticamente «Saltar anuncio» en cuanto aparece.",
+            author = "Loz Turner (adaptado)",
+            version = "1.0.0",
+            iconEmoji = "⚡",
+            isEnabled = true,
             matchPatterns = listOf("<all_urls>"),
             isBuiltIn = true,
             scriptContent = """
                 (function() {
-                    var darkCss = 'html, body { background-color: #121212 !important; color: #e0e0e0 !important; } ' +
-                        'img, video { opacity: 0.94; } a { color: #8ab4f8 !important; }';
-                    if (window.GM_addStyle) { window.GM_addStyle(darkCss); }
+                    if (window.__adAcceleratorInstalled) return;
+                    window.__adAcceleratorInstalled = true;
+
+                    function isVisible(el) {
+                        try {
+                            var r = el.getBoundingClientRect();
+                            var s = window.getComputedStyle(el);
+                            return r.width > 0 && r.height > 0 &&
+                                s.display !== 'none' && s.visibility !== 'hidden' &&
+                                s.opacity !== '0';
+                        } catch(e) { return false; }
+                    }
+
+                    function findSkipButton() {
+                        var nodes = document.querySelectorAll(
+                            'button, a, [role="button"], [class*="skip"], [id*="skip"], ' +
+                            '[class*="ad-close"], [aria-label*="saltar"], [aria-label*="skip"]'
+                        );
+                        for (var i = 0; i < nodes.length; i++) {
+                            var text = (nodes[i].textContent || '').trim().toLowerCase();
+                            if (text.length > 40) continue;
+                            if ((text.indexOf('saltar anuncio') >= 0 ||
+                                 text.indexOf('omitir anuncio') >= 0 ||
+                                 text.indexOf('skip ad') >= 0) && isVisible(nodes[i])) {
+                                return nodes[i];
+                            }
+                        }
+                        return null;
+                    }
+
+                    function isAdShowing() {
+                        return !!document.querySelector(
+                            '.ad-showing, .ytp-ad-player-overlay, .video-ads .ad-container, ' +
+                            '#vast-overlay, [id*="vast-overlay"], [class*="ad-overlay"]'
+                        );
+                    }
+
+                    function tick() {
+                        var skip = findSkipButton();
+                        var ad = isAdShowing() || skip !== null;
+
+                        if (skip) {
+                            try { skip.click(); } catch(e) {}
+                        }
+
+                        if (!ad) {
+                            document.querySelectorAll('video').forEach(function(v) {
+                                if (v.__adAcceleratorActive) {
+                                    v.__adAcceleratorActive = false;
+                                    v.muted = v.__adAcceleratorMuted || false;
+                                    v.playbackRate = v.__adAcceleratorRate || 1;
+                                }
+                            });
+                            return;
+                        }
+
+                        document.querySelectorAll('video').forEach(function(v) {
+                            if (!v.__adAcceleratorActive) {
+                                v.__adAcceleratorActive = true;
+                                v.__adAcceleratorMuted = v.muted;
+                                v.__adAcceleratorRate = v.playbackRate || 1;
+                            }
+                            v.muted = true;
+                            v.playbackRate = 16;
+                        });
+                    }
+
+                    tick();
+                    setInterval(tick, 400);
                 })();
             """.trimIndent()
         ),

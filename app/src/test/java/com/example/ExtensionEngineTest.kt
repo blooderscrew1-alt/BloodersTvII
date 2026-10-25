@@ -184,5 +184,7 @@ class ExtensionEngineTest {
         val extensions = ExtensionEngine.loadExtensions(context)
         assertTrue(extensions.any { it.id == "ext_ublock_video" })
         assertTrue(extensions.any { it.id == "ext_popup_redirect_shield" })
+        assertTrue(extensions.any { it.id == "ext_ad_accelerator" && it.isEnabled })
+        assertTrue(extensions.none { it.id == "ext_dark_reader" })
     }
 }
