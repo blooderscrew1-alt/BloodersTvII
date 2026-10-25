@@ -420,7 +420,7 @@ class PlayerWebActivity : ComponentActivity() {
                     webView.postDelayed({ tapCenter() }, 1_800)
                     // Tap the usual lower-right "Saltar anuncio" position
                     // without touching the central play/pause area.
-                    listOf(4_000L, 8_000L, 12_000L, 16_000L, 20_000L, 25_000L, 30_000L)
+                    listOf(3_500L, 4_200L, 4_900L, 5_600L, 6_300L, 7_000L, 7_700L)
                         .forEach { delayMs ->
                             webView.postDelayed({ tapSkipArea() }, delayMs)
                         }

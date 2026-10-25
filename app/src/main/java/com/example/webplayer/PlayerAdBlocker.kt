@@ -206,6 +206,45 @@ object PlayerAdBlocker {
                 } catch(e) { return false; }
             }
 
+            function accelerateAd() {
+                try {
+                    var videos = document.querySelectorAll('video');
+                    for (var i = 0; i < videos.length; i++) {
+                        var v = videos[i];
+                        if (!v || !isFinite(v.duration) || v.duration <= 0) continue;
+                        if (v.duration <= 300) {
+                            // A short video next to a "Saltar anuncio" label is
+                            // the preroll: jump to its end immediately.
+                            v.playbackRate = 16;
+                            v.currentTime = v.duration;
+                        }
+                    }
+
+                    // Some countdowns only use page timers. Accelerate short
+                    // timers for a few seconds, then restore normal timing.
+                    if (!window.__bhAdTimerBoost) {
+                        window.__bhAdTimerBoost = true;
+                        var originalTimeout = window.setTimeout;
+                        var originalInterval = window.setInterval;
+                        window.setTimeout = function(fn, delay) {
+                            var args = Array.prototype.slice.call(arguments, 2);
+                            var d = (delay >= 200 && delay <= 5000) ? 20 : delay;
+                            return originalTimeout.apply(window, [fn, d].concat(args));
+                        };
+                        window.setInterval = function(fn, delay) {
+                            var args = Array.prototype.slice.call(arguments, 2);
+                            var d = (delay >= 400 && delay <= 5000) ? 40 : delay;
+                            return originalInterval.apply(window, [fn, d].concat(args));
+                        };
+                        originalTimeout(function() {
+                            window.setTimeout = originalTimeout;
+                            window.setInterval = originalInterval;
+                            window.__bhAdTimerBoost = false;
+                        }, 12000);
+                    }
+                } catch(e) {}
+            }
+
             function cleanVideoAds() {
                 try {
                     var skipButtons = document.querySelectorAll(
@@ -227,6 +266,7 @@ object PlayerAdBlocker {
                         if ((text.indexOf('saltar anuncio') >= 0 ||
                              text.indexOf('omitir anuncio') >= 0 ||
                              text.indexOf('skip ad') >= 0) && isVisible(el)) {
+                            accelerateAd();
                             el.click();
                         }
                     }
@@ -270,7 +310,7 @@ object PlayerAdBlocker {
 
             cleanVideoAds();
             if (!window.__bloodersAdBlockInterval) {
-                window.__bloodersAdBlockInterval = setInterval(cleanVideoAds, 600);
+                window.__bloodersAdBlockInterval = setInterval(cleanVideoAds, 400);
             }
         })();
     """.trimIndent()
