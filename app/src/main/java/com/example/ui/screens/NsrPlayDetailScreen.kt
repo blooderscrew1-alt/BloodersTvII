@@ -85,11 +85,14 @@ import com.example.data.nsrplay.NsrPlayException
 import com.example.data.nsrplay.NsrPlayRepository
 import com.example.data.nsrplay.NsrSeason
 import com.example.data.nsrplay.NsrServer
+import com.example.data.unlimplay.UnlimplayRepository
+import com.example.data.unlimplay.UnlimplayType
 import com.example.webplayer.PlayerWebActivity
 import kotlinx.coroutines.launch
 
-private val NsrGenres = listOf(
-    "Acción" to "accion",
+private val nsrTmdbIdCache = mutableMapOf<String, Long>()
+
+private val NsrGenres = listOf(    "Acción" to "accion",
     "Comedia" to "comedia",
     "Drama" to "drama",
     "Terror" to "terror",
@@ -126,8 +129,14 @@ fun NsrPlayDetailScreen(
     var reloadTick by remember { mutableIntStateOf(0) }
 
     var selectedSeasonNumber by remember { mutableIntStateOf(1) }
+    var isResolvingPlayback by remember { mutableStateOf(false) }
+    var playbackError by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val tmdbRepository = remember {
+        UnlimplayRepository(context.applicationContext)
+    }
 
     BackHandler { onBack() }
 
@@ -163,13 +172,56 @@ fun NsrPlayDetailScreen(
         episode: Int? = null,
         label: String = item.title
     ) {
-        onPlayed(item)
-        val intent = Intent(context, PlayerWebActivity::class.java).apply {
-            putExtra(PlayerWebActivity.EXTRA_URL, repository.webPlayerUrl(item, season, episode))
-            putExtra(PlayerWebActivity.EXTRA_TITLE, label)
-            putExtra(PlayerWebActivity.EXTRA_REFERER, "https://nsrplay.space/")
+        if (isResolvingPlayback) return
+        isResolvingPlayback = true
+        playbackError = null
+        scope.launch {
+            try {
+                val cached = nsrTmdbIdCache[item.slug]
+                val tmdbId = if (cached != null) {
+                    cached
+                } else {
+                    val cleanTitle = item.title
+                        .replace(Regex("""\s*\(\d{4}\)\s*$"""), "")
+                        .trim()
+                    val preferred = if (item.type == NsrMediaType.SERIES) {
+                        UnlimplayType.SERIES
+                    } else {
+                        UnlimplayType.MOVIE
+                    }
+                    val tmdbResults = tmdbRepository.search(cleanTitle, preferred)
+                    val tmdbMatch = tmdbResults.firstOrNull {
+                        it.title.contains(cleanTitle, ignoreCase = true) ||
+                            cleanTitle.contains(it.title, ignoreCase = true)
+                    } ?: tmdbResults.firstOrNull()
+
+                    if (tmdbMatch == null) {
+                        playbackError = "No se pudo identificar este título en TMDB para abrir NSRPlay."
+                        return@launch
+                    }
+                    nsrTmdbIdCache[item.slug] = tmdbMatch.id
+                    tmdbMatch.id
+                }
+
+                onPlayed(item)
+                val url = repository.webPlayerUrl(
+                    media = item,
+                    tmdbId = tmdbId,
+                    season = season,
+                    episode = episode
+                )
+                val intent = Intent(context, PlayerWebActivity::class.java).apply {
+                    putExtra(PlayerWebActivity.EXTRA_URL, url)
+                    putExtra(PlayerWebActivity.EXTRA_TITLE, label)
+                    putExtra(PlayerWebActivity.EXTRA_REFERER, "https://nsrplay.space/")
+                }
+                context.startActivity(intent)
+            } catch (_: Throwable) {
+                playbackError = "No se pudo abrir el reproductor de NSRPlay. Inténtalo de nuevo."
+            } finally {
+                isResolvingPlayback = false
+            }
         }
-        context.startActivity(intent)
     }
 
     Column(
@@ -223,6 +275,32 @@ fun NsrPlayDetailScreen(
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                if (isResolvingPlayback) {
+                    item {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(
+                                color = primaryColor,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Abriendo reproductor de NSRPlay...",
+                                color = Color(0xFF8F9DAA),
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
+                playbackError?.let { message ->
+                    item {
+                        Text(
+                            text = message,
+                            color = Color(0xFFFF7A8A),
+                            fontSize = 11.sp
+                        )
+                    }
+                }
                 item {
                     Row {
                         Box(
@@ -332,6 +410,7 @@ fun NsrPlayDetailScreen(
                             onClick = {
                                 openNsrPage(info, label = info.title)
                             },
+                            enabled = !isResolvingPlayback,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = primaryColor,
                                 contentColor = Color.Black

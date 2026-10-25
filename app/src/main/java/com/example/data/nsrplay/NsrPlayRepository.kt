@@ -54,14 +54,16 @@ class NsrPlayRepository(context: Context) {
 
     fun webPlayerUrl(
         media: NsrMedia,
+        tmdbId: Long? = null,
         season: Int? = null,
         episode: Int? = null
     ): String {
         val base = config.baseUrl().trimEnd('/')
+        val id = tmdbId?.toString() ?: media.slug
         return if (media.type == NsrMediaType.SERIES) {
-            "$base/embed/tv/${media.slug}/${season ?: 1}/${episode ?: 1}"
+            "$base/embed/tv/$id/${season ?: 1}/${episode ?: 1}"
         } else {
-            "$base/embed/movie/${media.slug}"
+            "$base/embed/movie/$id"
         }
     }
 

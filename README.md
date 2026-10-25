@@ -20,7 +20,7 @@ Cliente Android (telÃ©fono, tablet, TV Box y Android TV) para listas IPTV prop
 - **Deslizador de tamaÃ±o de pÃ³sters** a la derecha de los filtros de bÃºsqueda; el tamaÃ±o elegido se guarda y se aplica a los tres carruseles (IPTV, Vimeus y NSRPlay).
 - **La barra de bÃºsqueda se oculta al pulsar Enter/OK o la lupa**, para dejar mÃ¡s espacio a los resultados. Un icono de lupa a la izquierda de los filtros la vuelve a mostrar y enfoca el campo.
 - **Bloqueo reforzado de anuncios de apuestas/casino** en NSRPlay, Vimeus y Unlimplay: incluye SapphireBet, 1xBet, Melbet, Mostbet, 22Bet, BC.Game, Stake, 1Win, Vulkan Vegas y variantes con subdominios numÃ©ricos.
-- **NSRPlay sin extracción de servidores**: películas abren `/embed/movie/{slug}` y cada episodio `/embed/tv/{slug}/{temporada}/{episodio}` directamente en su reproductor web.
+- **NSRPlay sin extracción de servidores**: resuelve el título en TMDB y abre `/embed/movie/{tmdbId}`; cada episodio abre `/embed/tv/{tmdbId}/{temporada}/{episodio}` en su reproductor web.
 - **Reproductor web para TV Box**: autoplay al cargar, botón central y teclas multimedia para play/pausa, retroceder/avanzar 10 s; si el iframe no permite JavaScript se simula un toque central.
 - **APK de rendimiento**: la variante `perf` usa R8, eliminaciÃ³n de recursos y firma de depuraciÃ³n; reduce el APK de ~22 MB a ~3 MB y el arranque medido en BlueStacks de ~1.9 s a ~0.4 s.
 - **Historial de series resumido**: â€œContinuar viendoâ€ muestra solo el Ãºltimo episodio de cada serie, no todos los capÃ­tulos; las etiquetas `VISTO` se conservan por separado.
