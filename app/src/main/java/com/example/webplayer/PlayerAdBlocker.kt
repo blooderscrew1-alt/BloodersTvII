@@ -117,7 +117,8 @@ object PlayerAdBlocker {
         "sportingbet", "bet9ja", "1xbit", "joycasino", "betmaster", "betobet",
         "betpawa", "pixbet", "vaidebet", "betesporte", "betnacional", "blaze.bet",
         "leovegas", "casumo", "jackpotcity", "royalvegas", "betcris",
-        "betplay", "codere", "caliente.mx", "playdoit", "strendus", "ganabet"
+        "betplay", "codere", "caliente.mx", "playdoit", "strendus", "ganabet",
+        "aliexpress", "temu.com", "shein.com", "dhgate", "banggood", "gearbest"
     )
 
     private val GAMBLING_HOST_SUFFIXES = setOf(
@@ -196,36 +197,80 @@ object PlayerAdBlocker {
                 }
             } catch(e) {}
 
+            function isVisible(el) {
+                try {
+                    var r = el.getBoundingClientRect();
+                    var s = window.getComputedStyle(el);
+                    return r.width > 0 && r.height > 0 &&
+                        s.display !== 'none' && s.visibility !== 'hidden' && s.opacity !== '0';
+                } catch(e) { return false; }
+            }
+
             function cleanVideoAds() {
                 try {
                     var skipButtons = document.querySelectorAll(
-                        '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, .videoAdUiSkipButton, [class*="skip-button"], button[id*="skip"]'
+                        '.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, ' +
+                        '.videoAdUiSkipButton, [class*="skip-button"], [class*="skipButton"], ' +
+                        '[class*="btn-skip"], [id*="skip"], [aria-label*="skip" i], ' +
+                        '[aria-label*="saltar" i]'
                     );
                     for (var i = 0; i < skipButtons.length; i++) {
-                        skipButtons[i].click();
+                        if (isVisible(skipButtons[i])) skipButtons[i].click();
                     }
 
-                    var isAdShowing = document.querySelector('.ad-showing, .ytp-ad-player-overlay, .video-ads .ad-container');
+                    // Providers often render "Saltar anuncio" as a plain div/span.
+                    var candidates = document.querySelectorAll('button, a, div, span, [role="button"]');
+                    for (var c = 0; c < candidates.length; c++) {
+                        var el = candidates[c];
+                        var text = (el.textContent || '').trim().toLowerCase();
+                        if (text.length > 40) continue;
+                        if ((text.indexOf('saltar anuncio') >= 0 ||
+                             text.indexOf('omitir anuncio') >= 0 ||
+                             text.indexOf('skip ad') >= 0) && isVisible(el)) {
+                            el.click();
+                        }
+                    }
+
+                    var adVideos = document.querySelectorAll(
+                        '#vast-video, video[id*="vast"], video[class*="ad"], .ad-showing video'
+                    );
+                    for (var v = 0; v < adVideos.length; v++) {
+                        var video = adVideos[v];
+                        if (video && video.duration > 0) {
+                            if (!video.paused) video.currentTime = video.duration;
+                            video.style.display = 'none';
+                        }
+                    }
+                    var vastOverlay = document.getElementById('vast-overlay');
+                    if (vastOverlay) vastOverlay.style.display = 'none';
+
+                    var isAdShowing = document.querySelector(
+                        '.ad-showing, .ytp-ad-player-overlay, .video-ads .ad-container'
+                    );
                     if (isAdShowing) {
                         var videos = document.querySelectorAll('video');
-                        for (var v = 0; v < videos.length; v++) {
-                            var video = videos[v];
-                            if (video && !video.paused && video.duration > 0) {
-                                video.currentTime = video.duration;
+                        for (var a = 0; a < videos.length; a++) {
+                            var mainVideo = videos[a];
+                            if (mainVideo && !mainVideo.paused && mainVideo.duration > 0) {
+                                mainVideo.currentTime = mainVideo.duration;
                             }
                         }
                     }
 
-                    var overlayCloses = document.querySelectorAll('.ytp-ad-overlay-close-button, [class*="ad-close"]');
-                    for (var c = 0; c < overlayCloses.length; c++) {
-                        overlayCloses[c].click();
+                    var overlayCloses = document.querySelectorAll(
+                        '.ytp-ad-overlay-close-button, [class*="ad-close"], ' +
+                        '[class*="ad_overlay"] [class*="close"], ' +
+                        '[id*="ad-overlay"] [class*="close"]'
+                    );
+                    for (var d = 0; d < overlayCloses.length; d++) {
+                        overlayCloses[d].click();
                     }
                 } catch(e) {}
             }
 
             cleanVideoAds();
             if (!window.__bloodersAdBlockInterval) {
-                window.__bloodersAdBlockInterval = setInterval(cleanVideoAds, 700);
+                window.__bloodersAdBlockInterval = setInterval(cleanVideoAds, 600);
             }
         })();
     """.trimIndent()

@@ -253,6 +253,21 @@ class PlayerWebActivity : ComponentActivity() {
         up.recycle()
     }
 
+    private fun tapSkipArea() {
+        val width = webView.width
+        val height = webView.height
+        if (width <= 0 || height <= 0) return
+        val now = SystemClock.uptimeMillis()
+        val x = width * 0.88f
+        val y = height * 0.93f
+        val down = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, x, y, 0)
+        val up = MotionEvent.obtain(now, now + 80, MotionEvent.ACTION_UP, x, y, 0)
+        webView.dispatchTouchEvent(down)
+        webView.dispatchTouchEvent(up)
+        down.recycle()
+        up.recycle()
+    }
+
     private fun loadStartUrl() {
         if (useIframe) {
             val safeUrl = startUrl
@@ -403,6 +418,12 @@ class PlayerWebActivity : ComponentActivity() {
                     // Cross-origin iframes cannot be scripted; a synthetic tap
                     // in the centre presses the provider's own play overlay.
                     webView.postDelayed({ tapCenter() }, 1_800)
+                    // Tap the usual lower-right "Saltar anuncio" position
+                    // without touching the central play/pause area.
+                    listOf(4_000L, 8_000L, 12_000L, 16_000L, 20_000L, 25_000L, 30_000L)
+                        .forEach { delayMs ->
+                            webView.postDelayed({ tapSkipArea() }, delayMs)
+                        }
                 }
                 if (url != null) {
                     val extensionScript = ExtensionEngine.generateInjectionScript(extensions, url)
