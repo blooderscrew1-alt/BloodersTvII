@@ -78,6 +78,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.webkit.ScriptHandler
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import com.example.extensions.ExtensionEngine
 import com.example.extensions.ExtensionNetworkFilter
 import com.example.extensions.WebExtension
@@ -115,6 +118,7 @@ class PlayerWebActivity : ComponentActivity() {
     private var referer: String = DEFAULT_REFERER
     private var useIframe: Boolean = false
     private var blockGamblingAds: Boolean = true
+    private var extensionScriptHandler: ScriptHandler? = null
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
 
@@ -147,6 +151,7 @@ class PlayerWebActivity : ComponentActivity() {
 
         webView = WebView(this)
         configureWebView()
+        installDocumentStartExtensions()
 
         setContent {
             MyApplicationTheme {
@@ -266,6 +271,18 @@ class PlayerWebActivity : ComponentActivity() {
         webView.dispatchTouchEvent(up)
         down.recycle()
         up.recycle()
+    }
+
+    private fun installDocumentStartExtensions() {
+        if (extensions.isEmpty()) return
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) return
+        val script = ExtensionEngine.generateAllFramesScript(extensions)
+        if (script.isBlank()) return
+        extensionScriptHandler = WebViewCompat.addDocumentStartJavaScript(
+            webView,
+            script,
+            setOf("*")
+        )
     }
 
     private fun loadStartUrl() {

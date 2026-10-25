@@ -83,6 +83,45 @@ class ExtensionEngineTest {
     }
 
     @Test
+    fun `all frame injection includes enabled script without url filtering`() {
+        val extension = WebExtension(
+            id = "iframe-test",
+            name = "Iframe test",
+            description = "Injects inside provider iframes",
+            scriptContent = "window.__iframeExtensionLoaded = true;",
+            matchPatterns = listOf("https://specific.example/*")
+        )
+
+        val script = ExtensionEngine.generateAllFramesScript(listOf(extension))
+
+        assertTrue(script.contains("__iframeExtensionLoaded"))
+        assertTrue(script.contains("__bloodersExtensionsInjected"))
+    }
+
+    @Test
+    fun `zip parser accepts a file larger than the old four megabyte limit`() {
+        val bigScript = "/*" + "x".repeat(5 * 1024 * 1024) + "*/window.__bigExtension = true;"
+        val output = ByteArrayOutputStream()
+        ZipOutputStream(output).use { zip ->
+            fun put(name: String, content: String) {
+                zip.putNextEntry(ZipEntry(name))
+                zip.write(content.toByteArray(Charsets.UTF_8))
+                zip.closeEntry()
+            }
+            put(
+                "manifest.json",
+                """{"manifest_version":3,"name":"Big Extension","version":"1.0","content_scripts":[{"matches":["<all_urls>"],"js":["big.js"]}]}"""
+            )
+            put("big.js", bigScript)
+        }
+
+        val result = ZipExtensionParser.parseZip(ByteArrayInputStream(output.toByteArray()))
+
+        assertTrue(result.isSuccess)
+        assertTrue(result.getOrThrow().scriptContent.length > 4 * 1024 * 1024)
+    }
+
+    @Test
     fun `crx3 package is parsed after its header`() {
         val zip = buildExtensionZip()
         val header = ByteArray(12 + 64)

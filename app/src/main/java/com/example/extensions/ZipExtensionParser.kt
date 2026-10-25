@@ -17,8 +17,6 @@ import java.util.zip.ZipInputStream
  */
 object ZipExtensionParser {
 
-    private const val MAX_PACKAGE_BYTES = 25 * 1024 * 1024
-    private const val MAX_FILE_BYTES = 4 * 1024 * 1024
     private const val MAX_RULES = 12_000
 
     data class ParsedExtension(
@@ -35,9 +33,6 @@ object ZipExtensionParser {
             val packageBytes = inputStream.use { it.readBytes() }
             if (packageBytes.isEmpty()) {
                 return Result.failure(Exception("El archivo está vacío."))
-            }
-            if (packageBytes.size > MAX_PACKAGE_BYTES) {
-                return Result.failure(Exception("El paquete supera el límite de 25 MB."))
             }
 
             val zipBytes = stripCrxHeader(packageBytes)
@@ -155,7 +150,6 @@ object ZipExtensionParser {
 
     private fun readZipFiles(bytes: ByteArray): Map<String, ByteArray> {
         val fileMap = mutableMapOf<String, ByteArray>()
-        var totalRead = 0L
         var entries = 0
 
         ZipInputStream(ByteArrayInputStream(bytes)).use { zipIn ->
@@ -171,17 +165,10 @@ object ZipExtensionParser {
                         val buffer = ByteArray(8192)
                         val out = ByteArrayOutputStream()
                         var len: Int
-                        var fileSize = 0
                         while (zipIn.read(buffer).also { len = it } > 0) {
-                            fileSize += len
-                            totalRead += len
-                            if (fileSize > MAX_FILE_BYTES || totalRead > MAX_PACKAGE_BYTES) break
                             out.write(buffer, 0, len)
                         }
-                        if (fileSize <= MAX_FILE_BYTES && totalRead <= MAX_PACKAGE_BYTES) {
-                            fileMap[name] = out.toByteArray()
-                        }
-                        if (totalRead > MAX_PACKAGE_BYTES) break
+                        fileMap[name] = out.toByteArray()
                     }
                 }
                 zipIn.closeEntry()

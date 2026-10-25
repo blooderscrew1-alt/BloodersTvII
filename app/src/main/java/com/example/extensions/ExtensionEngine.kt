@@ -271,6 +271,19 @@ object ExtensionEngine {
 
     fun generateInjectionScript(extensions: List<WebExtension>, url: String): String {
         val matching = extensions.filter { it.isEnabled && it.matchesUrl(url) }
+        return buildScript(matching)
+    }
+
+    /**
+     * Document-start script for WebViewCompat. It runs in every frame of the
+     * player, including cross-origin provider iframes where evaluateJavascript
+     * on the top-level page cannot reach.
+     */
+    fun generateAllFramesScript(extensions: List<WebExtension>): String {
+        return buildScript(extensions.filter { it.isEnabled })
+    }
+
+    private fun buildScript(matching: List<WebExtension>): String {
         if (matching.isEmpty()) return ""
 
         val sb = StringBuilder()
