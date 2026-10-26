@@ -72,6 +72,9 @@ object ExtensionEngine {
             isBuiltIn = true,
             scriptContent = """
                 (function() {
+                    var host = (location.hostname || '').toLowerCase();
+                    if (/(^|\.)vimeus\.com$/.test(host) ||
+                        /(^|\.)vimeos\.(net|zip|online)$/.test(host)) return;
                     var css = '[class*="ad-"], [id*="ad-"], [class*="ads-"], [id*="ads-"], ' +
                         '.ytp-ad-module, .video-ads, .ad-overlay, .ad-container, ' +
                         'iframe[src*="doubleclick"], iframe[src*="googleadservices"] ' +
@@ -92,6 +95,9 @@ object ExtensionEngine {
             isBuiltIn = true,
             scriptContent = """
                 (function() {
+                    var host = (location.hostname || '').toLowerCase();
+                    if (/(^|\.)vimeus\.com$/.test(host) ||
+                        /(^|\.)vimeos\.(net|zip|online)$/.test(host)) return;
                     try { window.open = function() { return null; }; } catch(e) {}
                     try {
                         document.querySelectorAll('meta[http-equiv="refresh"]').forEach(function(m) { m.remove(); });

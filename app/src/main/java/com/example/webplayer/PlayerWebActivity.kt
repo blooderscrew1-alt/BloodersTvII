@@ -337,7 +337,7 @@ class PlayerWebActivity : ComponentActivity() {
             allowFileAccess = false
             allowContentAccess = false
             javaScriptCanOpenWindowsAutomatically = false
-            setSupportMultipleWindows(false)
+            setSupportMultipleWindows(true)
             loadWithOverviewMode = true
             useWideViewPort = true
             setSupportZoom(false)
@@ -366,9 +366,17 @@ class PlayerWebActivity : ComponentActivity() {
                 request: WebResourceRequest?
             ): WebResourceResponse? {
                 val url = request?.url?.toString() ?: return null
+                // Vimeus/vimeos refuses to play when its ad scripts are
+                // blocked. Let those requests through and skip the video ad
+                // with the player's own auto-skip logic instead.
+                val pageUrl = view?.url.orEmpty()
+                val vimeusPage = pageUrl.contains("vimeus.com", ignoreCase = true) ||
+                    pageUrl.contains("vimeos.", ignoreCase = true)
                 val blockedByExtension = request?.isForMainFrame == false &&
                     extensionNetworkFilter.shouldBlock(url)
-                if (PlayerAdBlocker.isAdUrl(url, blockGamblingAds) || blockedByExtension) {
+                if (!vimeusPage &&
+                    (PlayerAdBlocker.isAdUrl(url, blockGamblingAds) || blockedByExtension)
+                ) {
                     return WebResourceResponse(
                         "text/plain",
                         "UTF-8",
@@ -519,8 +527,29 @@ class PlayerWebActivity : ComponentActivity() {
                 isUserGesture: Boolean,
                 resultMsg: android.os.Message?
             ): Boolean {
-                // Never allow provider pop-unders to create a second window.
-                return false
+                val pageUrl = view?.url.orEmpty()
+                val vimeusPage = pageUrl.contains("vimeus.com", ignoreCase = true) ||
+                    pageUrl.contains("vimeos.", ignoreCase = true)
+                if (!vimeusPage) return false
+
+                // Vimeus checks that window.open is not blocked. Give it a
+                // hidden, temporary popup and close it immediately so it cannot
+                // cover the player or open external pages.
+                val transport = resultMsg?.obj as? WebView.WebViewTransport ?: return false
+                val popup = WebView(this@PlayerWebActivity)
+                popup.settings.javaScriptEnabled = true
+                popup.webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(
+                        view: WebView?,
+                        request: WebResourceRequest?
+                    ): Boolean = true
+                }
+                transport.webView = popup
+                resultMsg.sendToTarget()
+                popup.postDelayed({
+                    try { popup.destroy() } catch (_: Throwable) {}
+                }, 1_500)
+                return true
             }
 
             override fun onPermissionRequest(request: PermissionRequest?) {

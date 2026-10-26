@@ -176,8 +176,15 @@ object PlayerAdBlocker {
 
     val PAGE_SCRIPT: String = """
         (function() {
+            var host = (location.hostname || '').toLowerCase();
+            // Vimeus/vimeos gates playback behind "allow pop-ups / disable
+            // adblock". On those hosts we let the page load its own scripts and
+            // popups and rely on the Ad Accelerator to skip the video ads.
+            var vimeusHost = /(^|\.)vimeus\.com$/.test(host) ||
+                /(^|\.)vimeos\.(net|zip|online)$/.test(host);
+
             try {
-                if (!window.__bloodersPopupGuard) {
+                if (!window.__bloodersPopupGuard && !vimeusHost) {
                     window.__bloodersPopupGuard = true;
                     window.open = function() { return null; };
                     window.alert = function() {};
@@ -189,7 +196,7 @@ object PlayerAdBlocker {
             } catch(e) {}
 
             try {
-                if (!document.getElementById('blooders-adblock-style')) {
+                if (!vimeusHost && !document.getElementById('blooders-adblock-style')) {
                     var style = document.createElement('style');
                     style.id = 'blooders-adblock-style';
                     style.textContent = '$AD_HIDING_CSS';
