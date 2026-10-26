@@ -30,6 +30,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.example.data.webepisodes.WebEpisodeWatchStore
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
@@ -56,6 +57,8 @@ class IptvRepository(private val context: Context) {
 
     private val _watchedNsr = MutableStateFlow<Set<String>>(emptySet())
     val watchedNsr: StateFlow<Set<String>> = _watchedNsr.asStateFlow()
+
+    val watchedWebEpisodes: StateFlow<Set<String>> = WebEpisodeWatchStore.watched
 
     private val _nsrHistory = MutableStateFlow<List<NsrHistoryItem>>(emptyList())
     val nsrHistory: StateFlow<List<NsrHistoryItem>> = _nsrHistory.asStateFlow()
@@ -109,6 +112,7 @@ class IptvRepository(private val context: Context) {
         loadHistory()
         _watchedEpisodeIds.value = prefs.getStringSet("watched_episode_ids", emptySet()) ?: emptySet()
         loadFavorites()
+        WebEpisodeWatchStore.init(context)
         loadWatchedNsr()
         loadNsrHistory()
         loadVimeus()
@@ -906,6 +910,7 @@ class IptvRepository(private val context: Context) {
         _vimeusHistory.value = emptyList()
         _unlimplayWatched.value = emptySet()
         _unlimplayHistory.value = emptyList()
+        WebEpisodeWatchStore.clear(context)
         prefs.edit()
             .remove("watch_history_json")
             .remove("watched_episode_ids")

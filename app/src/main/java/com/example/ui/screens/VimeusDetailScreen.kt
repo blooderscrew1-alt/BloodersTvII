@@ -33,6 +33,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,6 +58,7 @@ import com.example.data.vimeus.VimeusException
 import com.example.data.vimeus.VimeusMedia
 import com.example.data.vimeus.VimeusRepository
 import com.example.data.vimeus.VimeusType
+import com.example.data.webepisodes.WebEpisodeWatchStore
 import com.example.webplayer.PlayerWebActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -76,6 +78,7 @@ fun VimeusDetailScreen(
     var loadingEpisodes by remember(media.id) { mutableStateOf(false) }
     var episodesError by remember(media.id) { mutableStateOf<String?>(null) }
     var selectedSeason by remember(media.id) { mutableIntStateOf(1) }
+    val watchedWebEpisodes by WebEpisodeWatchStore.watched.collectAsState()
 
     BackHandler { onBack() }
 
@@ -127,14 +130,23 @@ fun VimeusDetailScreen(
         val currentIndex = episodes.indexOfFirst {
             it.season == season && it.episode == episode
         }
+        val queueWatchKeys = episodes.map {
+            WebEpisodeWatchStore.key(
+                WebEpisodeWatchStore.PROVIDER_VIMEUS,
+                media.id,
+                it.season,
+                it.episode
+            )
+        }.toCollection(ArrayList())
 
         val intent = Intent(context, PlayerWebActivity::class.java).apply {
             putExtra(PlayerWebActivity.EXTRA_URL, repository.embedUrl(media, season, episode))
             putExtra(PlayerWebActivity.EXTRA_TITLE, label)
             putExtra(PlayerWebActivity.EXTRA_REFERER, "https://vimeus.com/")
-            if (queueUrls.size > 1 && currentIndex >= 0) {
+            if (queueUrls.isNotEmpty() && currentIndex >= 0) {
                 putStringArrayListExtra(PlayerWebActivity.EXTRA_EPISODE_URLS, queueUrls)
                 putStringArrayListExtra(PlayerWebActivity.EXTRA_EPISODE_TITLES, queueTitles)
+                putStringArrayListExtra(PlayerWebActivity.EXTRA_EPISODE_WATCH_KEYS, queueWatchKeys)
                 putExtra(PlayerWebActivity.EXTRA_EPISODE_INDEX, currentIndex)
             }
         }
@@ -386,6 +398,30 @@ fun VimeusDetailScreen(
                                 color = Color(0xFF8F9DAA),
                                 fontSize = 9.sp
                             )
+                        }
+                        if (watchedWebEpisodes.contains(
+                                WebEpisodeWatchStore.key(
+                                    WebEpisodeWatchStore.PROVIDER_VIMEUS,
+                                    media.id,
+                                    episode.season,
+                                    episode.episode
+                                )
+                            )
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color(0x33FF9F1C))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "VISTO",
+                                    color = Color(0xFFFF9F1C),
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
                         }
                         Icon(
                             imageVector = Icons.Default.PlayArrow,

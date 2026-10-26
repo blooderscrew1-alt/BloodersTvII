@@ -39,8 +39,8 @@ android {
     applicationId = "com.aistudio.blooderstv.kjmnqx"
     minSdk = 24
     targetSdk = 36
-    versionCode = 54
-    versionName = "2.52"
+    versionCode = 55
+    versionName = "2.53"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

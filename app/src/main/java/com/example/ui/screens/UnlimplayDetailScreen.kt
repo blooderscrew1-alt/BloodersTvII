@@ -52,11 +52,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import androidx.compose.runtime.collectAsState
 import com.example.data.unlimplay.UnlimplayEpisode
 import com.example.data.unlimplay.UnlimplayMedia
 import com.example.data.unlimplay.UnlimplayRepository
 import com.example.data.unlimplay.UnlimplaySeason
 import com.example.data.unlimplay.UnlimplayType
+import com.example.data.webepisodes.WebEpisodeWatchStore
 import com.example.webplayer.PlayerWebActivity
 import kotlinx.coroutines.launch
 
@@ -76,6 +78,7 @@ fun UnlimplayDetailScreen(
     var selectedSeason by remember(media.id) { mutableIntStateOf(1) }
     var loading by remember(media.id) { mutableStateOf(media.type != UnlimplayType.MOVIE) }
     var error by remember(media.id) { mutableStateOf<String?>(null) }
+    val watchedWebEpisodes by WebEpisodeWatchStore.watched.collectAsState()
 
     BackHandler { onBack() }
 
@@ -138,6 +141,14 @@ fun UnlimplayDetailScreen(
         val currentIndex = queueEpisodes.indexOfFirst {
             it.season == currentSeason && it.episode == currentEpisode
         }
+        val queueWatchKeys = queueEpisodes.map {
+            WebEpisodeWatchStore.key(
+                WebEpisodeWatchStore.PROVIDER_UNLIMPLAY,
+                media.id.toString(),
+                it.season,
+                it.episode
+            )
+        }.toCollection(ArrayList())
 
         val intent = Intent(context, PlayerWebActivity::class.java).apply {
             putExtra(
@@ -151,9 +162,10 @@ fun UnlimplayDetailScreen(
             putExtra(PlayerWebActivity.EXTRA_TITLE, label)
             putExtra(PlayerWebActivity.EXTRA_REFERER, "https://unlimplay.com/")
             putExtra(PlayerWebActivity.EXTRA_USE_IFRAME, true)
-            if (queueUrls.size > 1 && currentIndex >= 0) {
+            if (queueUrls.isNotEmpty() && currentIndex >= 0) {
                 putStringArrayListExtra(PlayerWebActivity.EXTRA_EPISODE_URLS, queueUrls)
                 putStringArrayListExtra(PlayerWebActivity.EXTRA_EPISODE_TITLES, queueTitles)
+                putStringArrayListExtra(PlayerWebActivity.EXTRA_EPISODE_WATCH_KEYS, queueWatchKeys)
                 putExtra(PlayerWebActivity.EXTRA_EPISODE_INDEX, currentIndex)
             }
         }
@@ -405,6 +417,30 @@ fun UnlimplayDetailScreen(
                             color = Color(0xFF8F9DAA),
                             fontSize = 9.sp
                         )
+                    }
+                    if (watchedWebEpisodes.contains(
+                            WebEpisodeWatchStore.key(
+                                WebEpisodeWatchStore.PROVIDER_UNLIMPLAY,
+                                media.id.toString(),
+                                episode.season,
+                                episode.episode
+                            )
+                        )
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color(0x339C6BFF))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "VISTO",
+                                color = Color(0xFFC3A6FF),
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
                     }
                     Icon(
                         imageVector = Icons.Default.PlayArrow,

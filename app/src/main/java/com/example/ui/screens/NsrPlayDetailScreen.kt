@@ -55,6 +55,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -87,6 +88,7 @@ import com.example.data.nsrplay.NsrSeason
 import com.example.data.nsrplay.NsrServer
 import com.example.data.unlimplay.UnlimplayRepository
 import com.example.data.unlimplay.UnlimplayType
+import com.example.data.webepisodes.WebEpisodeWatchStore
 import com.example.webplayer.PlayerWebActivity
 import kotlinx.coroutines.launch
 
@@ -131,6 +133,7 @@ fun NsrPlayDetailScreen(
     var selectedSeasonNumber by remember { mutableIntStateOf(1) }
     var isResolvingPlayback by remember { mutableStateOf(false) }
     var playbackError by remember { mutableStateOf<String?>(null) }
+    val watchedWebEpisodes by WebEpisodeWatchStore.watched.collectAsState()
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -224,14 +227,23 @@ fun NsrPlayDetailScreen(
                 val currentIndex = allEpisodes.indexOfFirst {
                     it.season == season && it.number == episode
                 }
+                val queueWatchKeys = allEpisodes.map {
+                    WebEpisodeWatchStore.key(
+                        WebEpisodeWatchStore.PROVIDER_NSR,
+                        item.slug,
+                        it.season,
+                        it.number
+                    )
+                }.toCollection(ArrayList())
 
                 val intent = Intent(context, PlayerWebActivity::class.java).apply {
                     putExtra(PlayerWebActivity.EXTRA_URL, url)
                     putExtra(PlayerWebActivity.EXTRA_TITLE, label)
                     putExtra(PlayerWebActivity.EXTRA_REFERER, "https://nsrplay.space/")
-                    if (queueUrls.size > 1 && currentIndex >= 0) {
+                    if (queueUrls.isNotEmpty() && currentIndex >= 0) {
                         putStringArrayListExtra(PlayerWebActivity.EXTRA_EPISODE_URLS, queueUrls)
                         putStringArrayListExtra(PlayerWebActivity.EXTRA_EPISODE_TITLES, queueTitles)
+                        putStringArrayListExtra(PlayerWebActivity.EXTRA_EPISODE_WATCH_KEYS, queueWatchKeys)
                         putExtra(PlayerWebActivity.EXTRA_EPISODE_INDEX, currentIndex)
                     }
                 }
@@ -503,6 +515,14 @@ fun NsrPlayDetailScreen(
                             NsrEpisodeRow(
                                 episode = episode,
                                 selected = false,
+                                watched = watchedWebEpisodes.contains(
+                                    WebEpisodeWatchStore.key(
+                                        WebEpisodeWatchStore.PROVIDER_NSR,
+                                        info.slug,
+                                        episode.season,
+                                        episode.number
+                                    )
+                                ),
                                 primaryColor = primaryColor,
                                 onClick = {
                                     openNsrPage(
@@ -602,6 +622,7 @@ private fun NsrServerRow(
 private fun NsrEpisodeRow(
     episode: NsrEpisode,
     selected: Boolean,
+    watched: Boolean,
     primaryColor: Color,
     onClick: () -> Unit
 ) {
@@ -645,6 +666,22 @@ private fun NsrEpisodeRow(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
         )
+        if (watched) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color(0x33CCFF00))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = "VISTO",
+                    color = primaryColor,
+                    fontSize = 8.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+        }
         Icon(
             imageVector = Icons.Default.PlayArrow,
             contentDescription = "Ver episodio",

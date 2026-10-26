@@ -84,6 +84,7 @@ import androidx.webkit.ScriptHandler
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.example.extensions.ExtensionEngine
+import com.example.data.webepisodes.WebEpisodeWatchStore
 import com.example.extensions.ExtensionNetworkFilter
 import com.example.extensions.WebExtension
 import com.example.ui.theme.MyApplicationTheme
@@ -107,6 +108,7 @@ class PlayerWebActivity : ComponentActivity() {
         const val EXTRA_EPISODE_URLS = "extra_episode_urls"
         const val EXTRA_EPISODE_TITLES = "extra_episode_titles"
         const val EXTRA_EPISODE_INDEX = "extra_episode_index"
+        const val EXTRA_EPISODE_WATCH_KEYS = "extra_episode_watch_keys"
 
         val AUTO_NEXT_SCRIPT = """
             (function() {
@@ -169,6 +171,7 @@ class PlayerWebActivity : ComponentActivity() {
     private var blockGamblingAds: Boolean = true
     private var episodeUrls: List<String> = emptyList()
     private var episodeTitles: List<String> = emptyList()
+    private var episodeWatchKeys: List<String> = emptyList()
     private var episodeIndex: Int = -1
     private var lastAutoNextAt: Long = 0L
     @Volatile private var currentPageUrl: String = ""
@@ -198,10 +201,12 @@ class PlayerWebActivity : ComponentActivity() {
             ?.filter { it.isNotBlank() }
             .orEmpty()
         episodeTitles = intent.getStringArrayListExtra(EXTRA_EPISODE_TITLES).orEmpty()
+        episodeWatchKeys = intent.getStringArrayListExtra(EXTRA_EPISODE_WATCH_KEYS).orEmpty()
         episodeIndex = intent.getIntExtra(EXTRA_EPISODE_INDEX, -1)
         if (episodeIndex !in episodeUrls.indices) {
             episodeIndex = episodeUrls.indexOf(startUrl)
         }
+        markCurrentEpisodeWatched()
         referer = intent.getStringExtra(EXTRA_REFERER).orEmpty().ifBlank { DEFAULT_REFERER }
         useIframe = intent.getBooleanExtra(EXTRA_USE_IFRAME, false)
         blockGamblingAds = getSharedPreferences("blooders_tv_prefs", MODE_PRIVATE)
@@ -362,6 +367,13 @@ class PlayerWebActivity : ComponentActivity() {
         }
     }
 
+    private fun markCurrentEpisodeWatched() {
+        val key = episodeWatchKeys.getOrNull(episodeIndex).orEmpty()
+        if (key.isNotBlank()) {
+            WebEpisodeWatchStore.mark(this, key)
+        }
+    }
+
     private fun playNextEpisode() {
         if (episodeIndex !in 0 until episodeUrls.lastIndex) return
         val now = SystemClock.elapsedRealtime()
@@ -369,6 +381,7 @@ class PlayerWebActivity : ComponentActivity() {
         lastAutoNextAt = now
 
         episodeIndex++
+        markCurrentEpisodeWatched()
         startUrl = episodeUrls[episodeIndex]
         currentPageUrl = startUrl
         pageTitle = episodeTitles.getOrNull(episodeIndex)

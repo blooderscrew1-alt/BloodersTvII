@@ -280,3 +280,4 @@ BloodersTv no aloja, sube ni distribuye contenido. Las listas IPTV son responsab
 - **TV Box sin carga infinita**: no se inyectan extensiones en todos los frames en equipos de poca RAM ni Android antiguo, el auto-skip solo escanea el DOM cuando hay un anuncio y la superposición de carga se retira a los 20 s.
 - **Siguiente episodio automático**: NSRPlay, Vimeus y Unlimplay reciben la lista de capítulos; al terminar el video se carga el siguiente en el mismo reproductor, también dentro de iframes.
 - **Velocidad del contenido corregida**: el acelerador solo toca videos de anuncio de hasta 2 minutos y restaura la velocidad original; nunca acelera un episodio completo.
+- **VISTO en series web**: NSRPlay, Vimeus y Unlimplay guardan cada episodio reproducido y muestran la etiqueta `VISTO`, también al avanzar automáticamente.
