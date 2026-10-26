@@ -183,8 +183,26 @@ object ExtensionEngine {
                     function isAdShowing() {
                         return !!document.querySelector(
                             '.ad-showing, .ytp-ad-player-overlay, .video-ads .ad-container, ' +
-                            '#vast-overlay, [id*="vast-overlay"], [class*="ad-overlay"]'
+                            '#vast-overlay, [id*="vast-overlay"]'
                         );
+                    }
+
+                    function isAdVideo(v) {
+                        try {
+                            if (v.closest(
+                                '#vast-overlay, [id*="vast"], .video-ads, ' +
+                                '[class*="video-ads"], .ad-showing'
+                            )) return true;
+                            // Prerolls are short; never speed up a full episode.
+                            return isFinite(v.duration) && v.duration > 0 && v.duration <= 120;
+                        } catch(e) { return false; }
+                    }
+
+                    function restore(v) {
+                        if (!v.__adAcceleratorActive) return;
+                        v.__adAcceleratorActive = false;
+                        v.muted = v.__adAcceleratorMuted || false;
+                        v.playbackRate = v.__adAcceleratorRate || 1;
                     }
 
                     function tick() {
@@ -195,25 +213,21 @@ object ExtensionEngine {
                             try { skip.click(); } catch(e) {}
                         }
 
-                        if (!ad) {
-                            document.querySelectorAll('video').forEach(function(v) {
-                                if (v.__adAcceleratorActive) {
-                                    v.__adAcceleratorActive = false;
-                                    v.muted = v.__adAcceleratorMuted || false;
-                                    v.playbackRate = v.__adAcceleratorRate || 1;
+                        var videos = document.querySelectorAll('video');
+                        videos.forEach(function(v) {
+                            if (ad && isAdVideo(v)) {
+                                if (!v.__adAcceleratorActive) {
+                                    v.__adAcceleratorActive = true;
+                                    v.__adAcceleratorMuted = v.muted;
+                                    v.__adAcceleratorRate = v.playbackRate || 1;
                                 }
-                            });
-                            return;
-                        }
-
-                        document.querySelectorAll('video').forEach(function(v) {
-                            if (!v.__adAcceleratorActive) {
-                                v.__adAcceleratorActive = true;
-                                v.__adAcceleratorMuted = v.muted;
-                                v.__adAcceleratorRate = v.playbackRate || 1;
+                                v.muted = true;
+                                v.playbackRate = 16;
+                            } else {
+                                // This also restores content if the ad signal
+                                // remained visible after the ad finished.
+                                restore(v);
                             }
-                            v.muted = true;
-                            v.playbackRate = 16;
                         });
                     }
 

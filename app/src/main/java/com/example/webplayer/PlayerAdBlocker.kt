@@ -219,11 +219,21 @@ object PlayerAdBlocker {
                     for (var i = 0; i < videos.length; i++) {
                         var v = videos[i];
                         if (!v || !isFinite(v.duration) || v.duration <= 0) continue;
-                        if (v.duration <= 300) {
+                        if (v.duration <= 120) {
                             // A short video next to a "Saltar anuncio" label is
                             // the preroll: jump to its end immediately.
                             v.playbackRate = 16;
                             v.currentTime = v.duration;
+                            // Some players reuse the same <video> for the
+                            // episode after the ad. Never leave it at 16x.
+                            setTimeout(function(video) {
+                                try {
+                                    if (video.ended || video.paused ||
+                                        video.duration > 120) {
+                                        video.playbackRate = 1;
+                                    }
+                                } catch(e) {}
+                            }, 2500, v);
                         }
                     }
 
@@ -307,7 +317,8 @@ object PlayerAdBlocker {
                         var videos = document.querySelectorAll('video');
                         for (var a = 0; a < videos.length; a++) {
                             var mainVideo = videos[a];
-                            if (mainVideo && !mainVideo.paused && mainVideo.duration > 0) {
+                            if (mainVideo && !mainVideo.paused &&
+                                mainVideo.duration > 0 && mainVideo.duration <= 120) {
                                 mainVideo.currentTime = mainVideo.duration;
                             }
                         }
