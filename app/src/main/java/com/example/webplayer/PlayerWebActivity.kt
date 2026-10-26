@@ -17,6 +17,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.CookieManager
+import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -103,6 +104,44 @@ class PlayerWebActivity : ComponentActivity() {
         const val EXTRA_TITLE = "extra_title"
         const val EXTRA_REFERER = "extra_referer"
         const val EXTRA_USE_IFRAME = "extra_use_iframe"
+        const val EXTRA_EPISODE_URLS = "extra_episode_urls"
+        const val EXTRA_EPISODE_TITLES = "extra_episode_titles"
+        const val EXTRA_EPISODE_INDEX = "extra_episode_index"
+
+        val AUTO_NEXT_SCRIPT = """
+            (function() {
+                if (window.__bloodersAutoNextInstalled) return;
+                window.__bloodersAutoNextInstalled = true;
+
+                function bind(video) {
+                    if (!video || video.__bloodersNextBound) return;
+                    video.__bloodersNextBound = true;
+                    video.addEventListener('ended', function() {
+                        try {
+                            if (window.BloodersBridge &&
+                                window.BloodersBridge.onVideoEnded) {
+                                window.BloodersBridge.onVideoEnded();
+                            }
+                        } catch(e) {}
+                    }, true);
+                }
+
+                function scan() {
+                    try {
+                        document.querySelectorAll('video').forEach(bind);
+                    } catch(e) {}
+                }
+
+                scan();
+                try {
+                    new MutationObserver(scan).observe(
+                        document.documentElement,
+                        { childList: true, subtree: true }
+                    );
+                } catch(e) {}
+                setInterval(scan, 2000);
+            })();
+        """.trimIndent()
 
         private const val DEFAULT_REFERER = "https://nsrplay.space/"
         private const val DESKTOP_USER_AGENT =
@@ -119,6 +158,10 @@ class PlayerWebActivity : ComponentActivity() {
     private var referer: String = DEFAULT_REFERER
     private var useIframe: Boolean = false
     private var blockGamblingAds: Boolean = true
+    private var episodeUrls: List<String> = emptyList()
+    private var episodeTitles: List<String> = emptyList()
+    private var episodeIndex: Int = -1
+    private var lastAutoNextAt: Long = 0L
     @Volatile private var currentPageUrl: String = ""
     private var extensionScriptHandler: ScriptHandler? = null
     private var customView: View? = null
@@ -142,6 +185,14 @@ class PlayerWebActivity : ComponentActivity() {
 
         startUrl = intent.getStringExtra(EXTRA_URL).orEmpty()
         currentPageUrl = startUrl
+        episodeUrls = intent.getStringArrayListExtra(EXTRA_EPISODE_URLS)
+            ?.filter { it.isNotBlank() }
+            .orEmpty()
+        episodeTitles = intent.getStringArrayListExtra(EXTRA_EPISODE_TITLES).orEmpty()
+        episodeIndex = intent.getIntExtra(EXTRA_EPISODE_INDEX, -1)
+        if (episodeIndex !in episodeUrls.indices) {
+            episodeIndex = episodeUrls.indexOf(startUrl)
+        }
         referer = intent.getStringExtra(EXTRA_REFERER).orEmpty().ifBlank { DEFAULT_REFERER }
         useIframe = intent.getBooleanExtra(EXTRA_USE_IFRAME, false)
         blockGamblingAds = getSharedPreferences("blooders_tv_prefs", MODE_PRIVATE)
@@ -155,6 +206,7 @@ class PlayerWebActivity : ComponentActivity() {
         webView = WebView(this)
         configureWebView()
         installDocumentStartExtensions()
+        setupAutoNext()
 
         setContent {
             MyApplicationTheme {
@@ -279,6 +331,43 @@ class PlayerWebActivity : ComponentActivity() {
         webView.dispatchTouchEvent(up)
         down.recycle()
         up.recycle()
+    }
+
+    @SuppressLint("JavascriptInterface")
+    private fun setupAutoNext() {
+        if (episodeIndex !in 0 until episodeUrls.lastIndex) return
+        webView.addJavascriptInterface(AutoNextBridge(), "BloodersBridge")
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            WebViewCompat.addDocumentStartJavaScript(
+                webView,
+                AUTO_NEXT_SCRIPT,
+                setOf("*")
+            )
+        }
+    }
+
+    private inner class AutoNextBridge {
+        @JavascriptInterface
+        fun onVideoEnded() {
+            runOnUiThread { playNextEpisode() }
+        }
+    }
+
+    private fun playNextEpisode() {
+        if (episodeIndex !in 0 until episodeUrls.lastIndex) return
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastAutoNextAt < 2_500L) return
+        lastAutoNextAt = now
+
+        episodeIndex++
+        startUrl = episodeUrls[episodeIndex]
+        currentPageUrl = startUrl
+        pageTitle = episodeTitles.getOrNull(episodeIndex)
+            ?: pageTitle
+        isLoading = true
+        loadProgress = 0
+        errorMessage = null
+        loadStartUrl()
     }
 
     private fun installDocumentStartExtensions() {
@@ -458,6 +547,9 @@ class PlayerWebActivity : ComponentActivity() {
                 loadProgress = 100
                 view?.evaluateJavascript(PlayerAdBlocker.PAGE_SCRIPT, null)
                 view?.evaluateJavascript(PlayerAdBlocker.AUTOPLAY_SCRIPT, null)
+                if (episodeIndex in 0 until episodeUrls.lastIndex) {
+                    view?.evaluateJavascript(AUTO_NEXT_SCRIPT, null)
+                }
                 view?.evaluateJavascript(
                     PlayerAdBlocker.playbackSpeedScript(playbackSpeed),
                     null

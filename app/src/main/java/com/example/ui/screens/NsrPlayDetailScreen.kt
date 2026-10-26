@@ -210,10 +210,30 @@ fun NsrPlayDetailScreen(
                     season = season,
                     episode = episode
                 )
+                val allEpisodes = if (item.type == NsrMediaType.SERIES) {
+                    item.seasons.flatMap { it.episodes }
+                } else {
+                    emptyList()
+                }
+                val queueUrls = allEpisodes.map {
+                    repository.webPlayerUrl(item, tmdbId, it.season, it.number)
+                }.toCollection(ArrayList())
+                val queueTitles = allEpisodes.map {
+                    "${item.title} T${it.season}E${it.number}"
+                }.toCollection(ArrayList())
+                val currentIndex = allEpisodes.indexOfFirst {
+                    it.season == season && it.number == episode
+                }
+
                 val intent = Intent(context, PlayerWebActivity::class.java).apply {
                     putExtra(PlayerWebActivity.EXTRA_URL, url)
                     putExtra(PlayerWebActivity.EXTRA_TITLE, label)
                     putExtra(PlayerWebActivity.EXTRA_REFERER, "https://nsrplay.space/")
+                    if (queueUrls.size > 1 && currentIndex >= 0) {
+                        putStringArrayListExtra(PlayerWebActivity.EXTRA_EPISODE_URLS, queueUrls)
+                        putStringArrayListExtra(PlayerWebActivity.EXTRA_EPISODE_TITLES, queueTitles)
+                        putExtra(PlayerWebActivity.EXTRA_EPISODE_INDEX, currentIndex)
+                    }
                 }
                 context.startActivity(intent)
             } catch (_: Throwable) {

@@ -112,10 +112,31 @@ fun VimeusDetailScreen(
         } else {
             media.title
         }
+        val queueUrls = if (media.type != VimeusType.MOVIE) {
+            episodes.map { repository.embedUrl(media, it.season, it.episode) }
+                .toCollection(ArrayList())
+        } else {
+            ArrayList()
+        }
+        val queueTitles = if (media.type != VimeusType.MOVIE) {
+            episodes.map { "${media.title} T${it.season}E${it.episode}" }
+                .toCollection(ArrayList())
+        } else {
+            ArrayList()
+        }
+        val currentIndex = episodes.indexOfFirst {
+            it.season == season && it.episode == episode
+        }
+
         val intent = Intent(context, PlayerWebActivity::class.java).apply {
             putExtra(PlayerWebActivity.EXTRA_URL, repository.embedUrl(media, season, episode))
             putExtra(PlayerWebActivity.EXTRA_TITLE, label)
             putExtra(PlayerWebActivity.EXTRA_REFERER, "https://vimeus.com/")
+            if (queueUrls.size > 1 && currentIndex >= 0) {
+                putStringArrayListExtra(PlayerWebActivity.EXTRA_EPISODE_URLS, queueUrls)
+                putStringArrayListExtra(PlayerWebActivity.EXTRA_EPISODE_TITLES, queueTitles)
+                putExtra(PlayerWebActivity.EXTRA_EPISODE_INDEX, currentIndex)
+            }
         }
         context.startActivity(intent)
     }

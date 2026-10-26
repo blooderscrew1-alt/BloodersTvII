@@ -105,18 +105,40 @@ fun UnlimplayDetailScreen(
         } else {
             media.title
         }
+        val currentSeason = season ?: selectedSeason
+        val currentEpisode = episode ?: 1
+        val queueEpisodes = if (media.type == UnlimplayType.MOVIE) {
+            emptyList()
+        } else {
+            episodes.filter { it.season == currentSeason }
+        }
+        val queueUrls = queueEpisodes.map {
+            repository.embedUrl(media, it.season, it.episode)
+        }.toCollection(ArrayList())
+        val queueTitles = queueEpisodes.map {
+            "${media.title} T${it.season}E${it.episode}"
+        }.toCollection(ArrayList())
+        val currentIndex = queueEpisodes.indexOfFirst {
+            it.season == currentSeason && it.episode == currentEpisode
+        }
+
         val intent = Intent(context, PlayerWebActivity::class.java).apply {
             putExtra(
                 PlayerWebActivity.EXTRA_URL,
                 repository.embedUrl(
                     media = media,
-                    season = season ?: if (media.type == UnlimplayType.MOVIE) null else selectedSeason,
-                    episode = episode ?: 1
+                    season = if (media.type == UnlimplayType.MOVIE) null else currentSeason,
+                    episode = currentEpisode
                 )
             )
             putExtra(PlayerWebActivity.EXTRA_TITLE, label)
             putExtra(PlayerWebActivity.EXTRA_REFERER, "https://unlimplay.com/")
             putExtra(PlayerWebActivity.EXTRA_USE_IFRAME, true)
+            if (queueUrls.size > 1 && currentIndex >= 0) {
+                putStringArrayListExtra(PlayerWebActivity.EXTRA_EPISODE_URLS, queueUrls)
+                putStringArrayListExtra(PlayerWebActivity.EXTRA_EPISODE_TITLES, queueTitles)
+                putExtra(PlayerWebActivity.EXTRA_EPISODE_INDEX, currentIndex)
+            }
         }
         context.startActivity(intent)
     }
