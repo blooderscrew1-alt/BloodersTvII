@@ -77,6 +77,7 @@ fun SettingsScreen(
     val parentalPin by repository.parentalPin.collectAsState()
     val lockedCategories by repository.lockedCategories.collectAsState()
     val blockGamblingAds by repository.blockGamblingAds.collectAsState()
+    val playerMode by repository.playerMode.collectAsState()
 
     var cacheBytes by remember { mutableLongStateOf(SmartPlayerManager.getCacheSizeBytes(context)) }
     var newPinText by remember { mutableStateOf("") }
@@ -406,6 +407,44 @@ fun SettingsScreen(
                         )
                     )
                 }
+            }
+        }
+
+        item {
+            SettingsCard(
+                title = "Modo de dispositivo",
+                subtitle = "Ajusta el reproductor para TV Box o para teléfono.",
+                icon = Icons.Default.Tv,
+                primaryColor = primaryColor
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(
+                        "auto" to "Automático",
+                        "tv" to "TV Box",
+                        "phone" to "Teléfono"
+                    ).forEach { (value, label) ->
+                        val selected = playerMode == value
+                        Button(
+                            onClick = { repository.setPlayerMode(value) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (selected) primaryColor else Color(0xFF1E2833),
+                                contentColor = if (selected) Color.Black else Color.White
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                Text(
+                    text = "TV Box activa la compatibilidad con WebView antiguos. Teléfono usa el modo moderno.",
+                    color = Color(0xFF8F9DAA),
+                    fontSize = 10.sp
+                )
             }
         }
 

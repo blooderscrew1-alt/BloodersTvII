@@ -75,6 +75,7 @@ object SettingsBackupManager {
             put("bufferMode", repository.bufferMode.value.name)
             put("searchPosterScale", repository.searchPosterScale.value)
             put("blockGamblingAds", repository.blockGamblingAds.value)
+            put("playerMode", repository.playerMode.value)
             put("parentalPin", repository.parentalPin.value)
             put("lockedCategories", JSONArray(repository.lockedCategories.value.toList()))
             put("favorites", JSONArray(repository.favorites.value.toList()))
@@ -144,6 +145,9 @@ object SettingsBackupManager {
             }
             if (settings.has("blockGamblingAds")) {
                 repository.setBlockGamblingAds(settings.optBoolean("blockGamblingAds", true))
+            }
+            if (settings.has("playerMode")) {
+                repository.setPlayerMode(settings.optString("playerMode", "auto"))
             }
             settings.optString("parentalPin").takeIf { it.matches(Regex("\\d{4}")) }
                 ?.let { repository.setParentalPin(it) }

@@ -179,6 +179,14 @@ class ExtensionEngineTest {
     }
 
     @Test
+    fun `legacy patcher rewrites optional chaining`() {
+        val source = """const x = json?.data?.directUrl; if (!data.servers?.length) { return data.meta?.title || ""; }"""
+        val patched = com.example.webplayer.LegacyWebPatcher.patch(source)
+        assertTrue(patched.isNotEmpty())
+        assertFalse(patched.contains("?."))
+    }
+
+    @Test
     fun `built in extensions are available and persistent`() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val extensions = ExtensionEngine.loadExtensions(context)

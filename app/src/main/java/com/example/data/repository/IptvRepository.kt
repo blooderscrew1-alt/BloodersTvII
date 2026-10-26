@@ -84,6 +84,9 @@ class IptvRepository(private val context: Context) {
     private val _blockGamblingAds = MutableStateFlow(true)
     val blockGamblingAds: StateFlow<Boolean> = _blockGamblingAds.asStateFlow()
 
+    private val _playerMode = MutableStateFlow("auto")
+    val playerMode: StateFlow<String> = _playerMode.asStateFlow()
+
     var lastTvChannelId: String? = prefs.getString("last_tv_channel_id", null)
         private set
     var lastTvCategory: String? = prefs.getString("last_tv_category", null)
@@ -296,6 +299,7 @@ class IptvRepository(private val context: Context) {
         val pin = prefs.getString("parental_pin", "0000") ?: "0000"
         _parentalPin.value = pin
         _blockGamblingAds.value = prefs.getBoolean("block_gambling_ads", true)
+        _playerMode.value = prefs.getString("player_mode", "auto") ?: "auto"
 
         val locked = prefs.getStringSet("locked_categories", setOf("Adultos", "18+", "XXX")) ?: emptySet()
         _lockedCategories.value = locked
@@ -971,6 +975,12 @@ class IptvRepository(private val context: Context) {
     fun setBlockGamblingAds(enabled: Boolean) {
         _blockGamblingAds.value = enabled
         prefs.edit().putBoolean("block_gambling_ads", enabled).apply()
+    }
+
+    fun setPlayerMode(mode: String) {
+        val clean = mode.takeIf { it == "tv" || it == "phone" } ?: "auto"
+        _playerMode.value = clean
+        prefs.edit().putString("player_mode", clean).apply()
     }
 
     fun rememberTvChannel(item: PlaylistItem, category: String? = null) {

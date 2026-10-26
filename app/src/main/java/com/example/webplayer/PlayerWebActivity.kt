@@ -169,6 +169,7 @@ class PlayerWebActivity : ComponentActivity() {
     private var referer: String = DEFAULT_REFERER
     private var useIframe: Boolean = false
     private var blockGamblingAds: Boolean = true
+    private var legacyWebView: Boolean = false
     private var episodeUrls: List<String> = emptyList()
     private var episodeTitles: List<String> = emptyList()
     private var episodeWatchKeys: List<String> = emptyList()
@@ -217,6 +218,15 @@ class PlayerWebActivity : ComponentActivity() {
 
         webView = WebView(this)
         configureWebView()
+        val chromeMajor = Regex("Chrome/(\\d+)")
+            .find(WebSettings.getDefaultUserAgent(this))
+            ?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+        val isTv = packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) ||
+            packageManager.hasSystemFeature(PackageManager.FEATURE_TELEVISION)
+        val mode = getSharedPreferences("blooders_tv_prefs", android.content.Context.MODE_PRIVATE)
+            .getString("player_mode", "auto") ?: "auto"
+        val tvMode = mode == "tv" || (mode == "auto" && isTv)
+        legacyWebView = tvMode && chromeMajor in 1..79
         installDocumentStartExtensions()
         setupAutoNext()
 
@@ -488,6 +498,11 @@ class PlayerWebActivity : ComponentActivity() {
                 request: WebResourceRequest?
             ): WebResourceResponse? {
                 val url = request?.url?.toString() ?: return null
+                if (legacyWebView && request != null &&
+                    LegacyWebPatcher.shouldPatch(request)
+                ) {
+                    LegacyWebPatcher.responseFor(request)?.let { return it }
+                }
                 val blockedByExtension = request?.isForMainFrame == false &&
                     extensionNetworkFilter.shouldBlock(url)
                 if (PlayerAdBlocker.isAdUrl(url, blockGamblingAds) || blockedByExtension) {
