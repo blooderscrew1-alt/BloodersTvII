@@ -115,6 +115,15 @@ class PlayerWebActivity : ComponentActivity() {
 
                 function bind(video) {
                     if (!video || video.__bloodersNextBound) return;
+                    // Never advance on an ad video ending.
+                    try {
+                        if (video.closest(
+                            '#vast-overlay, [id*="vast"], [class*="ad-overlay"], ' +
+                            '[class*="video-ads"], .video-ads, .ad-showing'
+                        )) return;
+                        if (isFinite(video.duration) && video.duration > 0 &&
+                            video.duration < 120) return;
+                    } catch(e) {}
                     video.__bloodersNextBound = true;
                     video.addEventListener('ended', function() {
                         try {
