@@ -277,3 +277,4 @@ BloodersTv no aloja, sube ni distribuye contenido. Las listas IPTV son responsab
 - **Ad Accelerator predeterminada**: extensión activa por defecto que acelera el video del anuncio, lo silencia y pulsa «Saltar anuncio» en cuanto aparece; se eliminó Dark Reader.
 - **Vimeus en Android nuevo**: en Vimeus/vimeos no se ocultan sus scripts ni se bloquean sus popups, porque el proveedor muestra “Disable ADBlock” y no reproduce; el auto-skip sigue acelerando y saltando el anuncio.
 - **Corrección de crash al abrir el reproductor**: `shouldInterceptRequest` usaba `WebView.getUrl()` desde un hilo de red; ahora usa la URL cacheada en el hilo principal.
+- **TV Box sin carga infinita**: no se inyectan extensiones en todos los frames en equipos de poca RAM ni Android antiguo, el auto-skip solo escanea el DOM cuando hay un anuncio y la superposición de carga se retira a los 20 s.

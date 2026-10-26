@@ -218,7 +218,7 @@ object ExtensionEngine {
                     }
 
                     tick();
-                    setInterval(tick, 400);
+                    setInterval(tick, 700);
                 })();
             """.trimIndent()
         ),

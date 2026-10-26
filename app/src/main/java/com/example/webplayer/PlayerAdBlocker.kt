@@ -264,17 +264,26 @@ object PlayerAdBlocker {
                         if (isVisible(skipButtons[i])) skipButtons[i].click();
                     }
 
-                    // Providers often render "Saltar anuncio" as a plain div/span.
-                    var candidates = document.querySelectorAll('button, a, div, span, [role="button"]');
-                    for (var c = 0; c < candidates.length; c++) {
-                        var el = candidates[c];
-                        var text = (el.textContent || '').trim().toLowerCase();
-                        if (text.length > 40) continue;
-                        if ((text.indexOf('saltar anuncio') >= 0 ||
-                             text.indexOf('omitir anuncio') >= 0 ||
-                             text.indexOf('skip ad') >= 0) && isVisible(el)) {
-                            accelerateAd();
-                            el.click();
+                    // Scan text nodes only while an ad is actually present;
+                    // scanning the whole DOM every tick makes TV boxes lag.
+                    var adSignal = skipButtons.length > 0 || document.querySelector(
+                        '.ad-showing, #vast-overlay, [id*="vast"], ' +
+                        '[class*="ad-overlay"], [class*="skip"]'
+                    );
+                    if (adSignal) {
+                        var candidates = document.querySelectorAll(
+                            'button, a, [role="button"], [class*="skip"], [id*="skip"], div, span'
+                        );
+                        for (var c = 0; c < candidates.length; c++) {
+                            var el = candidates[c];
+                            var text = (el.textContent || '').trim().toLowerCase();
+                            if (text.length > 40) continue;
+                            if ((text.indexOf('saltar anuncio') >= 0 ||
+                                 text.indexOf('omitir anuncio') >= 0 ||
+                                 text.indexOf('skip ad') >= 0) && isVisible(el)) {
+                                accelerateAd();
+                                el.click();
+                            }
                         }
                     }
 
@@ -317,7 +326,7 @@ object PlayerAdBlocker {
 
             cleanVideoAds();
             if (!window.__bloodersAdBlockInterval) {
-                window.__bloodersAdBlockInterval = setInterval(cleanVideoAds, 400);
+                window.__bloodersAdBlockInterval = setInterval(cleanVideoAds, 700);
             }
         })();
     """.trimIndent()

@@ -1,6 +1,7 @@
 package com.example.webplayer
 
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.app.PictureInPictureParams
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -186,6 +187,11 @@ class PlayerWebActivity : ComponentActivity() {
             isLoading = false
         } else {
             loadStartUrl()
+            // Never leave the app's loading overlay on top forever. If the
+            // provider's iframe is slow, show its page so the user can retry.
+            webView.postDelayed({
+                if (!isFinishing && isLoading) isLoading = false
+            }, 20_000)
         }
     }
 
@@ -277,6 +283,12 @@ class PlayerWebActivity : ComponentActivity() {
 
     private fun installDocumentStartExtensions() {
         if (extensions.isEmpty()) return
+        // Injecting the full extension bundle into every frame overwhelms
+        // low-RAM TV boxes and older WebViews. They keep the top-level
+        // injection that worked before.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        val activityManager = getSystemService(ActivityManager::class.java)
+        if (activityManager?.isLowRamDevice == true) return
         if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) return
         val script = ExtensionEngine.generateAllFramesScript(extensions)
         if (script.isBlank()) return
@@ -339,7 +351,13 @@ class PlayerWebActivity : ComponentActivity() {
             allowFileAccess = false
             allowContentAccess = false
             javaScriptCanOpenWindowsAutomatically = false
-            setSupportMultipleWindows(true)
+            // Multiple windows are only needed by Vimeus' anti-adblock check,
+            // and only on devices with enough memory. TV boxes keep the simple
+            // single-window path.
+            val lowRam = getSystemService(ActivityManager::class.java)?.isLowRamDevice == true
+            setSupportMultipleWindows(
+                !lowRam && startUrl.contains("vimeus.com", ignoreCase = true)
+            )
             loadWithOverviewMode = true
             useWideViewPort = true
             setSupportZoom(false)
