@@ -39,9 +39,11 @@ object LegacyWebPatcher {
         val url = request.url.toString()
         if (!request.method.equals("GET", ignoreCase = true)) return false
         val host = request.url.host.orEmpty().lowercase()
-        // Only NSRPlay is transpiled: its page is simple enough for a safe
-        // rewrite. Vimeus' bundled player must not be altered.
-        val playerHost = host.endsWith("nsrplay.space")
+        // NSRPlay and the Vimeos player frame are safe to rewrite. The
+        // Vimeus wrapper itself is left untouched.
+        val playerHost = host.endsWith("nsrplay.space") ||
+            host.startsWith("vimeos.") ||
+            host.endsWith("vimeos.net")
         if (!playerHost) return false
         if (request.isForMainFrame) return true
         val path = request.url.encodedPath.orEmpty().lowercase()
