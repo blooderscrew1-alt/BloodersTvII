@@ -155,10 +155,10 @@ class PlayerWebActivity : ComponentActivity() {
         """.trimIndent()
 
         private const val DEFAULT_REFERER = "https://nsrplay.space/"
-        private const val DESKTOP_USER_AGENT =
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
-        private const val MOBILE_USER_AGENT =
-            "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36"
+        private fun desktopUserAgent(major: Int): String =
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/$major.0.0.0 Safari/537.36"
+        private fun mobileUserAgent(major: Int): String =
+            "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/$major.0.0.0 Mobile Safari/537.36"
         private val SPEEDS = floatArrayOf(1f, 1.25f, 1.5f, 2f)
     }
 
@@ -175,6 +175,7 @@ class PlayerWebActivity : ComponentActivity() {
     private var episodeWatchKeys: List<String> = emptyList()
     private var episodeIndex: Int = -1
     private var lastAutoNextAt: Long = 0L
+    private var chromeMajorVersion: Int = 128
     private var extensionScriptHandler: ScriptHandler? = null
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
@@ -452,6 +453,9 @@ class PlayerWebActivity : ComponentActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun configureWebView() {
+        chromeMajorVersion = Regex("Chrome/(\\d+)")
+            .find(WebSettings.getDefaultUserAgent(this))
+            ?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 128
         webView.setBackgroundColor(AndroidColor.BLACK)
         webView.isFocusable = true
         webView.isFocusableInTouchMode = true
@@ -478,8 +482,8 @@ class PlayerWebActivity : ComponentActivity() {
             cacheMode = WebSettings.LOAD_DEFAULT
             mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
             userAgentString = when {
-                useIframe -> MOBILE_USER_AGENT
-                desktopMode -> DESKTOP_USER_AGENT
+                useIframe -> mobileUserAgent(chromeMajorVersion)
+                desktopMode -> desktopUserAgent(chromeMajorVersion)
                 else -> null
             }
             textZoom = 100
@@ -697,8 +701,8 @@ class PlayerWebActivity : ComponentActivity() {
     private fun toggleDesktopMode() {
         desktopMode = !desktopMode
         webView.settings.userAgentString = when {
-            useIframe -> MOBILE_USER_AGENT
-            desktopMode -> DESKTOP_USER_AGENT
+            useIframe -> mobileUserAgent(chromeMajorVersion)
+            desktopMode -> desktopUserAgent(chromeMajorVersion)
             else -> null
         }
         webView.reload()
