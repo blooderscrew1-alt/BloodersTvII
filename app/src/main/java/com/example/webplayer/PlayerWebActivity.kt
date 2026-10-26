@@ -118,6 +118,7 @@ class PlayerWebActivity : ComponentActivity() {
     private var referer: String = DEFAULT_REFERER
     private var useIframe: Boolean = false
     private var blockGamblingAds: Boolean = true
+    @Volatile private var currentPageUrl: String = ""
     private var extensionScriptHandler: ScriptHandler? = null
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
@@ -139,6 +140,7 @@ class PlayerWebActivity : ComponentActivity() {
         hideSystemBars()
 
         startUrl = intent.getStringExtra(EXTRA_URL).orEmpty()
+        currentPageUrl = startUrl
         referer = intent.getStringExtra(EXTRA_REFERER).orEmpty().ifBlank { DEFAULT_REFERER }
         useIframe = intent.getBooleanExtra(EXTRA_USE_IFRAME, false)
         blockGamblingAds = getSharedPreferences("blooders_tv_prefs", MODE_PRIVATE)
@@ -369,7 +371,9 @@ class PlayerWebActivity : ComponentActivity() {
                 // Vimeus/vimeos refuses to play when its ad scripts are
                 // blocked. Let those requests through and skip the video ad
                 // with the player's own auto-skip logic instead.
-                val pageUrl = view?.url.orEmpty()
+                // This callback runs on a background thread. Do not call
+                // WebView.getUrl() here; use the URL cached on the main thread.
+                val pageUrl = currentPageUrl
                 val vimeusPage = pageUrl.contains("vimeus.com", ignoreCase = true) ||
                     pageUrl.contains("vimeos.", ignoreCase = true)
                 val blockedByExtension = request?.isForMainFrame == false &&
@@ -413,6 +417,7 @@ class PlayerWebActivity : ComponentActivity() {
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
+                currentPageUrl = url.orEmpty()
                 isLoading = true
                 loadProgress = 5
                 errorMessage = null
@@ -430,6 +435,7 @@ class PlayerWebActivity : ComponentActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                currentPageUrl = url.orEmpty()
                 isLoading = false
                 loadProgress = 100
                 view?.evaluateJavascript(PlayerAdBlocker.PAGE_SCRIPT, null)
@@ -527,7 +533,7 @@ class PlayerWebActivity : ComponentActivity() {
                 isUserGesture: Boolean,
                 resultMsg: android.os.Message?
             ): Boolean {
-                val pageUrl = view?.url.orEmpty()
+                val pageUrl = currentPageUrl
                 val vimeusPage = pageUrl.contains("vimeus.com", ignoreCase = true) ||
                     pageUrl.contains("vimeos.", ignoreCase = true)
                 if (!vimeusPage) return false
