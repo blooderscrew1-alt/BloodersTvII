@@ -166,7 +166,7 @@ object ExtensionEngine {
                     function findSkipButton() {
                         var nodes = document.querySelectorAll(
                             'button, a, [role="button"], [class*="skip"], [id*="skip"], ' +
-                            '[class*="ad-close"], [aria-label*="saltar"], [aria-label*="skip"]'
+                            '[aria-label*="saltar"], [aria-label*="skip"]'
                         );
                         for (var i = 0; i < nodes.length; i++) {
                             var text = (nodes[i].textContent || '').trim().toLowerCase();
@@ -210,7 +210,12 @@ object ExtensionEngine {
                         var ad = isAdShowing() || skip !== null;
 
                         if (skip) {
-                            try { skip.click(); } catch(e) {}
+                            var now = Date.now();
+                            if (!skip.__bloodersSkipAt ||
+                                now - skip.__bloodersSkipAt > 5000) {
+                                skip.__bloodersSkipAt = now;
+                                try { skip.click(); } catch(e) {}
+                            }
                         }
 
                         var videos = document.querySelectorAll('video');

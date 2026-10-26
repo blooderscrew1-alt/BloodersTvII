@@ -271,7 +271,13 @@ object PlayerAdBlocker {
                         '[aria-label*="saltar" i]'
                     );
                     for (var i = 0; i < skipButtons.length; i++) {
-                        if (isVisible(skipButtons[i])) skipButtons[i].click();
+                        if (!isVisible(skipButtons[i])) continue;
+                        var now = Date.now();
+                        if (!skipButtons[i].__bloodersSkipAt ||
+                            now - skipButtons[i].__bloodersSkipAt > 5000) {
+                            skipButtons[i].__bloodersSkipAt = now;
+                            skipButtons[i].click();
+                        }
                     }
 
                     // Scan text nodes only while an ad is actually present;
@@ -292,7 +298,12 @@ object PlayerAdBlocker {
                                  text.indexOf('omitir anuncio') >= 0 ||
                                  text.indexOf('skip ad') >= 0) && isVisible(el)) {
                                 accelerateAd();
-                                el.click();
+                                var now = Date.now();
+                                if (!el.__bloodersSkipAt ||
+                                    now - el.__bloodersSkipAt > 5000) {
+                                    el.__bloodersSkipAt = now;
+                                    el.click();
+                                }
                             }
                         }
                     }
@@ -325,7 +336,7 @@ object PlayerAdBlocker {
                     }
 
                     var overlayCloses = document.querySelectorAll(
-                        '.ytp-ad-overlay-close-button, [class*="ad-close"], ' +
+                        '.ytp-ad-overlay-close-button, ' +
                         '[class*="ad_overlay"] [class*="close"], ' +
                         '[id*="ad-overlay"] [class*="close"]'
                     );

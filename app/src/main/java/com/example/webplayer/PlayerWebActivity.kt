@@ -71,6 +71,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -169,6 +170,7 @@ class PlayerWebActivity : ComponentActivity() {
     private var referer: String = DEFAULT_REFERER
     private var useIframe: Boolean = false
     private var blockGamblingAds: Boolean = true
+    private var legacyWebView: Boolean = false
     private var episodeUrls: List<String> = emptyList()
     private var episodeTitles: List<String> = emptyList()
     private var episodeWatchKeys: List<String> = emptyList()
@@ -219,6 +221,12 @@ class PlayerWebActivity : ComponentActivity() {
 
         webView = WebView(this)
         configureWebView()
+        val chromeMajor = Regex("Chrome/(\\d+)")
+            .find(WebSettings.getDefaultUserAgent(this))
+            ?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
+        val isTv = packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) ||
+            packageManager.hasSystemFeature(PackageManager.FEATURE_TELEVISION)
+        legacyWebView = isTv && chromeMajor in 1..79
         installDocumentStartExtensions()
         setupAutoNext()
 
@@ -251,6 +259,12 @@ class PlayerWebActivity : ComponentActivity() {
         if (startUrl.isBlank()) {
             errorMessage = "No se recibió un enlace de reproducción."
             isLoading = false
+        } else if (legacyWebView) {
+            isLoading = false
+            errorMessage = "Este TV Box usa Android System WebView " +
+                "74, demasiado antiguo para los reproductores actuales. " +
+                "Actualiza \"Android System WebView\" o Chrome desde Play Store " +
+                "y vuelve a intentarlo."
         } else {
             loadStartUrl()
             // Never leave the app's loading overlay on top forever. If the
@@ -411,6 +425,12 @@ class PlayerWebActivity : ComponentActivity() {
     }
 
     private fun loadStartUrl() {
+        if (legacyWebView) {
+            isLoading = false
+            errorMessage = "El WebView de este TV Box es demasiado antiguo. " +
+                "Actualiza \"Android System WebView\" o Chrome desde Play Store."
+            return
+        }
         if (useIframe) {
             val safeUrl = startUrl
                 .replace("&", "&amp;")
@@ -462,12 +482,12 @@ class PlayerWebActivity : ComponentActivity() {
             allowFileAccess = false
             allowContentAccess = false
             javaScriptCanOpenWindowsAutomatically = false
-            // Multiple windows are only needed by Vimeus' anti-adblock check,
-            // and only on devices with enough memory. TV boxes keep the simple
-            // single-window path.
-            val lowRam = getSystemService(ActivityManager::class.java)?.isLowRamDevice == true
+            // Multiple windows are only needed by Vimeus' anti-adblock check.
+            // Do not enable this on Android 10/older TV WebViews: it leaves
+            // them on a black page.
             setSupportMultipleWindows(
-                !lowRam && startUrl.contains("vimeus.com", ignoreCase = true)
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                    startUrl.contains("vimeus.com", ignoreCase = true)
             )
             loadWithOverviewMode = true
             useWideViewPort = true
@@ -832,6 +852,7 @@ private fun PlayerWebScreen(
     onHideControls: () -> Unit,
     onClose: () -> Unit
 ) {
+    val context = LocalContext.current
     BackHandler { onBack() }
 
     LaunchedEffect(controlsVisible) {
@@ -874,7 +895,7 @@ private fun PlayerWebScreen(
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
-                        .width(320.dp)
+                        .width(360.dp)
                         .clip(RoundedCornerShape(14.dp))
                         .background(Color(0xFF0F1722))
                         .padding(20.dp)
@@ -892,7 +913,29 @@ private fun PlayerWebScreen(
                         fontSize = 12.sp
                     )
                     Spacer(modifier = Modifier.size(16.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (errorMessage?.contains("WebView") == true) {
+                            Button(
+                                onClick = {
+                                    try {
+                                        val intent = android.content.Intent(
+                                            android.content.Intent.ACTION_VIEW,
+                                            android.net.Uri.parse(
+                                                "https://play.google.com/store/apps/details?id=com.google.android.webview"
+                                            )
+                                        )
+                                        context.startActivity(intent)
+                                    } catch (_: Throwable) {
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF1E2833),
+                                    contentColor = Color(0xFFC0CAD5)
+                                )
+                            ) {
+                                Text("Actualizar", fontSize = 12.sp)
+                            }
+                        }
                         Button(
                             onClick = onClose,
                             colors = ButtonDefaults.buttonColors(
