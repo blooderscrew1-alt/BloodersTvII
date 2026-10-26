@@ -72,6 +72,7 @@ fun UnlimplayDetailScreen(
     val scope = rememberCoroutineScope()
     var seasons by remember(media.id) { mutableStateOf<List<UnlimplaySeason>>(emptyList()) }
     var episodes by remember(media.id) { mutableStateOf<List<UnlimplayEpisode>>(emptyList()) }
+    var allEpisodes by remember(media.id) { mutableStateOf<List<UnlimplayEpisode>>(emptyList()) }
     var selectedSeason by remember(media.id) { mutableIntStateOf(1) }
     var loading by remember(media.id) { mutableStateOf(media.type != UnlimplayType.MOVIE) }
     var error by remember(media.id) { mutableStateOf<String?>(null) }
@@ -98,6 +99,22 @@ fun UnlimplayDetailScreen(
         }
     }
 
+    // Load every season in the background so auto-next can cross a season
+    // boundary, not only advance inside the selected season.
+    LaunchedEffect(media.id, seasons) {
+        if (media.type == UnlimplayType.MOVIE || seasons.isEmpty()) return@LaunchedEffect
+        val combined = mutableListOf<UnlimplayEpisode>()
+        for (season in seasons) {
+            try {
+                combined += repository.getEpisodes(media.id, season.number)
+            } catch (_: Throwable) {
+            }
+        }
+        allEpisodes = combined
+            .distinctBy { it.season to it.episode }
+            .sortedWith(compareBy({ it.season }, { it.episode }))
+    }
+
     fun play(season: Int? = null, episode: Int? = null) {
         onPlayed(media)
         val label = if (season != null && episode != null) {
@@ -110,7 +127,7 @@ fun UnlimplayDetailScreen(
         val queueEpisodes = if (media.type == UnlimplayType.MOVIE) {
             emptyList()
         } else {
-            episodes.filter { it.season == currentSeason }
+            allEpisodes.ifEmpty { episodes }
         }
         val queueUrls = queueEpisodes.map {
             repository.embedUrl(media, it.season, it.episode)
