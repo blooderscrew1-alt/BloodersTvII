@@ -71,7 +71,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -170,13 +169,11 @@ class PlayerWebActivity : ComponentActivity() {
     private var referer: String = DEFAULT_REFERER
     private var useIframe: Boolean = false
     private var blockGamblingAds: Boolean = true
-    private var legacyWebView: Boolean = false
     private var episodeUrls: List<String> = emptyList()
     private var episodeTitles: List<String> = emptyList()
     private var episodeWatchKeys: List<String> = emptyList()
     private var episodeIndex: Int = -1
     private var lastAutoNextAt: Long = 0L
-    @Volatile private var currentPageUrl: String = ""
     private var extensionScriptHandler: ScriptHandler? = null
     private var customView: View? = null
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
@@ -198,7 +195,6 @@ class PlayerWebActivity : ComponentActivity() {
         hideSystemBars()
 
         startUrl = intent.getStringExtra(EXTRA_URL).orEmpty()
-        currentPageUrl = startUrl
         episodeUrls = intent.getStringArrayListExtra(EXTRA_EPISODE_URLS)
             ?.filter { it.isNotBlank() }
             .orEmpty()
@@ -221,12 +217,6 @@ class PlayerWebActivity : ComponentActivity() {
 
         webView = WebView(this)
         configureWebView()
-        val chromeMajor = Regex("Chrome/(\\d+)")
-            .find(WebSettings.getDefaultUserAgent(this))
-            ?.groupValues?.getOrNull(1)?.toIntOrNull() ?: 0
-        val isTv = packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK) ||
-            packageManager.hasSystemFeature(PackageManager.FEATURE_TELEVISION)
-        legacyWebView = isTv && chromeMajor in 1..79
         installDocumentStartExtensions()
         setupAutoNext()
 
@@ -257,14 +247,8 @@ class PlayerWebActivity : ComponentActivity() {
         }
 
         if (startUrl.isBlank()) {
-            errorMessage = "No se recibió un enlace de reproducción."
+            errorMessage = "No se recibiÃ³ un enlace de reproducciÃ³n."
             isLoading = false
-        } else if (legacyWebView) {
-            isLoading = false
-            errorMessage = "Este TV Box usa Android System WebView " +
-                "74, demasiado antiguo para los reproductores actuales. " +
-                "Actualiza \"Android System WebView\" o Chrome desde Play Store " +
-                "y vuelve a intentarlo."
         } else {
             loadStartUrl()
             // Never leave the app's loading overlay on top forever. If the
@@ -397,7 +381,6 @@ class PlayerWebActivity : ComponentActivity() {
         episodeIndex++
         markCurrentEpisodeWatched()
         startUrl = episodeUrls[episodeIndex]
-        currentPageUrl = startUrl
         pageTitle = episodeTitles.getOrNull(episodeIndex)
             ?: pageTitle
         isLoading = true
@@ -425,12 +408,6 @@ class PlayerWebActivity : ComponentActivity() {
     }
 
     private fun loadStartUrl() {
-        if (legacyWebView) {
-            isLoading = false
-            errorMessage = "El WebView de este TV Box es demasiado antiguo. " +
-                "Actualiza \"Android System WebView\" o Chrome desde Play Store."
-            return
-        }
         if (useIframe) {
             val safeUrl = startUrl
                 .replace("&", "&amp;")
@@ -482,13 +459,7 @@ class PlayerWebActivity : ComponentActivity() {
             allowFileAccess = false
             allowContentAccess = false
             javaScriptCanOpenWindowsAutomatically = false
-            // Multiple windows are only needed by Vimeus' anti-adblock check.
-            // Do not enable this on Android 10/older TV WebViews: it leaves
-            // them on a black page.
-            setSupportMultipleWindows(
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
-                    startUrl.contains("vimeus.com", ignoreCase = true)
-            )
+            setSupportMultipleWindows(false)
             loadWithOverviewMode = true
             useWideViewPort = true
             setSupportZoom(false)
@@ -517,19 +488,9 @@ class PlayerWebActivity : ComponentActivity() {
                 request: WebResourceRequest?
             ): WebResourceResponse? {
                 val url = request?.url?.toString() ?: return null
-                // Vimeus/vimeos refuses to play when its ad scripts are
-                // blocked. Let those requests through and skip the video ad
-                // with the player's own auto-skip logic instead.
-                // This callback runs on a background thread. Do not call
-                // WebView.getUrl() here; use the URL cached on the main thread.
-                val pageUrl = currentPageUrl
-                val vimeusPage = pageUrl.contains("vimeus.com", ignoreCase = true) ||
-                    pageUrl.contains("vimeos.", ignoreCase = true)
                 val blockedByExtension = request?.isForMainFrame == false &&
                     extensionNetworkFilter.shouldBlock(url)
-                if (!vimeusPage &&
-                    (PlayerAdBlocker.isAdUrl(url, blockGamblingAds) || blockedByExtension)
-                ) {
+                if (PlayerAdBlocker.isAdUrl(url, blockGamblingAds) || blockedByExtension) {
                     return WebResourceResponse(
                         "text/plain",
                         "UTF-8",
@@ -566,7 +527,6 @@ class PlayerWebActivity : ComponentActivity() {
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
-                currentPageUrl = url.orEmpty()
                 isLoading = true
                 loadProgress = 5
                 errorMessage = null
@@ -584,7 +544,6 @@ class PlayerWebActivity : ComponentActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                currentPageUrl = url.orEmpty()
                 isLoading = false
                 loadProgress = 100
                 view?.evaluateJavascript(PlayerAdBlocker.PAGE_SCRIPT, null)
@@ -628,7 +587,7 @@ class PlayerWebActivity : ComponentActivity() {
                 super.onReceivedError(view, request, error)
                 if (request?.isForMainFrame == true) {
                     isLoading = false
-                    errorMessage = "No se pudo abrir el reproductor. Revisa tu conexión e inténtalo de nuevo."
+                    errorMessage = "No se pudo abrir el reproductor. Revisa tu conexiÃ³n e intÃ©ntalo de nuevo."
                 }
             }
         }
@@ -685,29 +644,8 @@ class PlayerWebActivity : ComponentActivity() {
                 isUserGesture: Boolean,
                 resultMsg: android.os.Message?
             ): Boolean {
-                val pageUrl = currentPageUrl
-                val vimeusPage = pageUrl.contains("vimeus.com", ignoreCase = true) ||
-                    pageUrl.contains("vimeos.", ignoreCase = true)
-                if (!vimeusPage) return false
-
-                // Vimeus checks that window.open is not blocked. Give it a
-                // hidden, temporary popup and close it immediately so it cannot
-                // cover the player or open external pages.
-                val transport = resultMsg?.obj as? WebView.WebViewTransport ?: return false
-                val popup = WebView(this@PlayerWebActivity)
-                popup.settings.javaScriptEnabled = true
-                popup.webViewClient = object : WebViewClient() {
-                    override fun shouldOverrideUrlLoading(
-                        view: WebView?,
-                        request: WebResourceRequest?
-                    ): Boolean = true
-                }
-                transport.webView = popup
-                resultMsg.sendToTarget()
-                popup.postDelayed({
-                    try { popup.destroy() } catch (_: Throwable) {}
-                }, 1_500)
-                return true
+                // Never allow provider pop-unders to create a second window.
+                return false
             }
 
             override fun onPermissionRequest(request: PermissionRequest?) {
@@ -852,7 +790,6 @@ private fun PlayerWebScreen(
     onHideControls: () -> Unit,
     onClose: () -> Unit
 ) {
-    val context = LocalContext.current
     BackHandler { onBack() }
 
     LaunchedEffect(controlsVisible) {
@@ -895,7 +832,7 @@ private fun PlayerWebScreen(
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
-                        .width(360.dp)
+                        .width(320.dp)
                         .clip(RoundedCornerShape(14.dp))
                         .background(Color(0xFF0F1722))
                         .padding(20.dp)
@@ -913,29 +850,7 @@ private fun PlayerWebScreen(
                         fontSize = 12.sp
                     )
                     Spacer(modifier = Modifier.size(16.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (errorMessage?.contains("WebView") == true) {
-                            Button(
-                                onClick = {
-                                    try {
-                                        val intent = android.content.Intent(
-                                            android.content.Intent.ACTION_VIEW,
-                                            android.net.Uri.parse(
-                                                "https://play.google.com/store/apps/details?id=com.google.android.webview"
-                                            )
-                                        )
-                                        context.startActivity(intent)
-                                    } catch (_: Throwable) {
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF1E2833),
-                                    contentColor = Color(0xFFC0CAD5)
-                                )
-                            ) {
-                                Text("Actualizar", fontSize = 12.sp)
-                            }
-                        }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Button(
                             onClick = onClose,
                             colors = ButtonDefaults.buttonColors(
@@ -1131,3 +1046,4 @@ private fun ControlIcon(
         )
     }
 }
+
