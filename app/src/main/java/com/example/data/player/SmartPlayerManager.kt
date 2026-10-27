@@ -1,11 +1,15 @@
 package com.example.data.player
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
@@ -118,6 +122,43 @@ class SmartPlayerManager(private val context: Context) {
         }
     }
 
+    private var vlcLaunchedForUrl: String? = null
+
+    private fun launchVlcFallback() {
+        val url = currentStreamUrl ?: return
+        if (vlcLaunchedForUrl == url) return
+        vlcLaunchedForUrl = url
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+            setPackage("org.videolan.vlc")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            context.startActivity(intent)
+            exoPlayer?.stop()
+            Toast.makeText(
+                context,
+                "Audio MP2: reproduciendo con VLC",
+                Toast.LENGTH_SHORT
+            ).show()
+        } catch (_: Throwable) {
+            _errorMessage.value =
+                "Este canal usa audio MP2, que Android no decodifica. " +
+                    "Instala VLC para escucharlo."
+        }
+    }
+
+    private fun checkUnsupportedAudio(tracks: Tracks) {
+        val mp2 = tracks.groups.any { group ->
+            group.type == C.TRACK_TYPE_AUDIO &&
+                (0 until group.length).any { index ->
+                    val mime = group.getTrackFormat(index).sampleMimeType.orEmpty()
+                        .lowercase()
+                    mime == "audio/mpeg-l2" || mime == "audio/mpeg"
+                }
+        }
+        if (mp2) launchVlcFallback()
+    }
+
     private fun buildPlayer(bufferMode: BufferMode) {
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
@@ -169,6 +210,10 @@ class SmartPlayerManager(private val context: Context) {
                         _isPlaying.value = playing
                     }
 
+                    override fun onTracksChanged(tracks: Tracks) {
+                        checkUnsupportedAudio(tracks)
+                    }
+
                     override fun onPlayerError(error: PlaybackException) {
                         _isBuffering.value = false
                         _isPlaying.value = false
@@ -183,6 +228,7 @@ class SmartPlayerManager(private val context: Context) {
 
     fun playStream(url: String, startPositionMs: Long = 0L, autoPlay: Boolean = true) {
         currentStreamUrl = url
+        vlcLaunchedForUrl = null
         _errorMessage.value = null
         _playbackEnded.value = false
         val player = getPlayer()
