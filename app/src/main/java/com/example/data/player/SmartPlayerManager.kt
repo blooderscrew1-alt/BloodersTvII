@@ -2,8 +2,6 @@ package com.example.data.player
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
-import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -128,18 +126,13 @@ class SmartPlayerManager(private val context: Context) {
         val url = currentStreamUrl ?: return
         if (vlcLaunchedForUrl == url) return
         vlcLaunchedForUrl = url
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).apply {
             setPackage("org.videolan.vlc")
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         try {
             context.startActivity(intent)
             exoPlayer?.stop()
-            Toast.makeText(
-                context,
-                "Audio MP2: reproduciendo con VLC",
-                Toast.LENGTH_SHORT
-            ).show()
         } catch (_: Throwable) {
             _errorMessage.value =
                 "Este canal usa audio MP2, que Android no decodifica. " +
