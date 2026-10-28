@@ -79,38 +79,7 @@ object PlayerAdBlocker {
         "reviversoft.com",
         "adf.ly",
         "shorte.st",
-        "linkvertise.com",
-        "profitablecpmgate.com",
-        "clickaine.com",
-        "clickadilla.com",
-        "trafficstars.com",
-        "adnium.com",
-        "adxpansion.com",
-        "recreativ.ru",
-        "adskeeper.com",
-        "kadam.net",
-        "rtbhouse.com",
-        "pushnami.com",
-        "pushwoosh.com",
-        "slimspots.com",
-        "popunderjs.com",
-        "popunder.net",
-        "popads.net",
-        "popcash.net",
-        "adnium.com",
-        "adcash.com",
-        "clickadu.com",
-        "hilltopads.net",
-        "adsterra.com",
-        "onclickads.net",
-        "zedo.com",
-        "advertising.com",
-        "go.pub2srv.com",
-        "tsyndicate.com",
-        "exoclick.com",
-        "juicyads.com",
-        "trafficjunky.com",
-        "adxcore.ch"
+        "linkvertise.com"
     )
 
     private val BLOCKED_KEYWORDS = listOf(        "/googleads/",
@@ -204,56 +173,6 @@ object PlayerAdBlocker {
         }
         video { max-width: 100% !important; }
     """.trimIndent().replace("\n", " ")
-
-    val POPUP_GUARD_SCRIPT: String = """
-        (function() {
-            try {
-                if (window.__bloodersPopupGuardV2) return;
-                window.__bloodersPopupGuardV2 = true;
-                var noop = function() { return null; };
-                window.open = noop;
-                window.alert = function() {};
-                window.confirm = function() { return false; };
-                window.prompt = function() { return null; };
-                window.showModalDialog = noop;
-                document.addEventListener('click', function(e) {
-                    var el = e.target;
-                    var a = el && el.closest ? el.closest('a') : null;
-                    if (!a) return;
-                    var href = (a.getAttribute('href') || '').trim();
-                    var externalScheme = /^(intent|market|whatsapp|tg|mailto|tel):/i.test(href);
-                    var blank = a.target === '_blank' || a.hasAttribute('download') ||
-                        ((a.getAttribute('rel') || '').toLowerCase().indexOf('noopener') >= 0);
-                    if (blank || externalScheme) {
-                        e.preventDefault();
-                        e.stopImmediatePropagation();
-                        return false;
-                    }
-                }, true);
-                // Remove injected fixed-position popups/overlays without touching
-                // the player's own controls.
-                var killPopups = function() {
-                    try {
-                        var nodes = document.querySelectorAll(
-                            '[id*="popup"], [class*="popup"], [id*="popunder"], ' +
-                            '[class*="popunder"], [id*="ad-overlay"], [class*="ad-overlay"], ' +
-                            '[id*="interstitial"], [class*="interstitial"]'
-                        );
-                        for (var i = 0; i < nodes.length; i++) {
-                            var n = nodes[i];
-                            if (!n || !n.parentNode) continue;
-                            var st = window.getComputedStyle(n);
-                            var fixed = st.position === 'fixed' || st.position === 'absolute';
-                            if (fixed && (st.zIndex === 'auto' || parseInt(st.zIndex, 10) >= 5)) {
-                                n.parentNode.removeChild(n);
-                            }
-                        }
-                    } catch (e) {}
-                };
-                setInterval(killPopups, 1500);
-            } catch (e) {}
-        })();
-    """.trimIndent()
 
     val PAGE_SCRIPT: String = """
         (function() {
