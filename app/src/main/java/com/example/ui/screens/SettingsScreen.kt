@@ -40,6 +40,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -78,6 +79,7 @@ fun SettingsScreen(
     val lockedCategories by repository.lockedCategories.collectAsState()
     val blockGamblingAds by repository.blockGamblingAds.collectAsState()
     val playerMode by repository.playerMode.collectAsState()
+    val videoSources by repository.videoSources.collectAsState()
 
     var cacheBytes by remember { mutableLongStateOf(SmartPlayerManager.getCacheSizeBytes(context)) }
     var newPinText by remember { mutableStateOf("") }
@@ -450,6 +452,68 @@ fun SettingsScreen(
 
         item {
             SettingsCard(
+                title = "Fuentes de video",
+                subtitle = "Activa, desactiva o cambia el orden en que aparecen los resultados.",
+                icon = Icons.Default.Tv,
+                primaryColor = primaryColor
+            ) {
+                Column {
+                    videoSources.forEachIndexed { index, source ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = when (source.id) {
+                                    "nsr" -> "NSRPlay"
+                                    "vimeus" -> "Vimeus"
+                                    "unlimplay" -> "Unlimplay"
+                                    "facilitoplay" -> "FacilitoPlay"
+                                    "tukiplay" -> "TukiPlay"
+                                    else -> source.id
+                                },
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            TextButton(
+                                onClick = { repository.moveVideoSource(source.id, -1) },
+                                enabled = index > 0,
+                                contentPadding = PaddingValues(horizontal = 4.dp)
+                            ) {
+                                Text("Subir", color = if (index > 0) primaryColor else Color(0xFF4A5A68), fontSize = 9.sp)
+                            }
+                            TextButton(
+                                onClick = { repository.moveVideoSource(source.id, 1) },
+                                enabled = index < videoSources.lastIndex,
+                                contentPadding = PaddingValues(horizontal = 4.dp)
+                            ) {
+                                Text(
+                                    "Bajar",
+                                    color = if (index < videoSources.lastIndex) primaryColor
+                                    else Color(0xFF4A5A68),
+                                    fontSize = 9.sp
+                                )
+                            }
+                            Switch(
+                                checked = source.enabled,
+                                onCheckedChange = {
+                                    repository.setVideoSourceEnabled(source.id, it)
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.Black,
+                                    checkedTrackColor = primaryColor
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            SettingsCard(
                 title = "Historial de Vista",
                 subtitle = "Administra las películas y series que has comenzado a ver.",
                 icon = Icons.Default.Cached,
@@ -634,3 +698,4 @@ fun RemoteShortcutRow(key: String, action: String) {
         )
     }
 }
+

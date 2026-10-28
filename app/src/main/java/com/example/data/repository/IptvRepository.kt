@@ -6,6 +6,7 @@ import android.util.JsonReader
 import android.util.JsonToken
 import android.util.JsonWriter
 import com.example.data.model.BufferMode
+import com.example.data.model.VideoSourcePreference
 import com.example.data.model.ItemType
 import com.example.data.model.PlaylistItem
 import com.example.data.model.PlaylistSource
@@ -38,6 +39,16 @@ import java.io.File
 import java.util.UUID
 
 class IptvRepository(private val context: Context) {
+
+    companion object {
+        val DEFAULT_VIDEO_SOURCES = listOf(
+            VideoSourcePreference("nsr", true),
+            VideoSourcePreference("vimeus", true),
+            VideoSourcePreference("unlimplay", true),
+            VideoSourcePreference("facilitoplay", true),
+            VideoSourcePreference("tukiplay", true)
+        )
+    }
 
     private val prefs: SharedPreferences = context.getSharedPreferences("blooders_tv_prefs", Context.MODE_PRIVATE)
     private val repoScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -86,6 +97,9 @@ class IptvRepository(private val context: Context) {
 
     private val _playerMode = MutableStateFlow("auto")
     val playerMode: StateFlow<String> = _playerMode.asStateFlow()
+
+    private val _videoSources = MutableStateFlow(DEFAULT_VIDEO_SOURCES)
+    val videoSources: StateFlow<List<VideoSourcePreference>> = _videoSources.asStateFlow()
 
     var lastTvChannelId: String? = prefs.getString("last_tv_channel_id", null)
         private set
@@ -300,6 +314,7 @@ class IptvRepository(private val context: Context) {
         _parentalPin.value = pin
         _blockGamblingAds.value = prefs.getBoolean("block_gambling_ads", true)
         _playerMode.value = prefs.getString("player_mode", "auto") ?: "auto"
+        loadVideoSources()
 
         val locked = prefs.getStringSet("locked_categories", setOf("Adultos", "18+", "XXX")) ?: emptySet()
         _lockedCategories.value = locked
@@ -983,6 +998,48 @@ class IptvRepository(private val context: Context) {
         prefs.edit().putString("player_mode", clean).apply()
     }
 
+    private fun loadVideoSources() {
+        val known = DEFAULT_VIDEO_SOURCES.associateBy { it.id }
+        val order = prefs.getString("video_source_order", null)
+            ?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() }
+            ?.ifEmpty { null }
+            ?: DEFAULT_VIDEO_SOURCES.map { it.id }
+        val disabled = prefs.getStringSet("video_source_disabled", emptySet()) ?: emptySet()
+        val ordered = order.mapNotNull { known[it] }
+        val missing = DEFAULT_VIDEO_SOURCES.filter { it.id !in order }
+        _videoSources.value = (ordered + missing).map {
+            it.copy(enabled = !disabled.contains(it.id))
+        }
+    }
+
+    private fun persistVideoSources() {
+        prefs.edit()
+            .putString("video_source_order", _videoSources.value.joinToString(",") { it.id })
+            .putStringSet(
+                "video_source_disabled",
+                _videoSources.value.filter { !it.enabled }.map { it.id }.toSet()
+            )
+            .apply()
+    }
+
+    fun setVideoSourceEnabled(id: String, enabled: Boolean) {
+        _videoSources.value = _videoSources.value.map {
+            if (it.id == id) it.copy(enabled = enabled) else it
+        }
+        persistVideoSources()
+    }
+
+    fun moveVideoSource(id: String, direction: Int) {
+        val list = _videoSources.value.toMutableList()
+        val index = list.indexOfFirst { it.id == id }
+        val target = index + direction
+        if (index < 0 || target !in list.indices) return
+        val item = list.removeAt(index)
+        list.add(target, item)
+        _videoSources.value = list
+        persistVideoSources()
+    }
+
     fun rememberTvChannel(item: PlaylistItem, category: String? = null) {
         if (item.type != ItemType.LIVE) return
         lastTvChannelId = item.id
@@ -993,3 +1050,4 @@ class IptvRepository(private val context: Context) {
             .apply()
     }
 }
+

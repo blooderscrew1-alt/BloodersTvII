@@ -1,7 +1,5 @@
 ﻿package com.example.ui.screens
 
-import android.content.Context
-import android.content.Intent
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -90,6 +88,7 @@ import com.example.data.nsrplay.NsrPlayException
 import com.example.data.nsrplay.NsrPlayRepository
 import com.example.data.nsrplay.watchKey
 import com.example.data.repository.IptvRepository
+import com.example.data.tmdbembed.TmdbEmbedSource
 import com.example.data.unlimplay.UnlimplayMedia
 import com.example.data.unlimplay.UnlimplayRepository
 import com.example.data.unlimplay.UnlimplayType
@@ -101,7 +100,6 @@ import com.example.ui.components.SearchPosterCarousel
 import com.example.ui.components.SearchPosterItem
 import com.example.ui.components.UnlimplayBadgeColor
 import com.example.ui.components.VimeusBadgeColor
-import com.example.webplayer.PlayerWebActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -118,6 +116,10 @@ fun SearchScreen(
     val watchedNsr by repository.watchedNsr.collectAsState()
     val watchedVimeus by repository.vimeusWatched.collectAsState()
     val watchedUnlimplay by repository.unlimplayWatched.collectAsState()
+    val videoSources by repository.videoSources.collectAsState()
+    val enabledSources = remember(videoSources) {
+        videoSources.filter { it.enabled }.map { it.id }.toSet()
+    }
     val watchedIds = remember(history) { history.map { it.itemId }.toSet() }
     val watchedEpisodeIds by repository.watchedEpisodeIds.collectAsState()
     val context = LocalContext.current
@@ -153,6 +155,7 @@ fun SearchScreen(
     var unlimplayLoading by remember { mutableStateOf(false) }
     var unlimplayError by remember { mutableStateOf<String?>(null) }
     var selectedUnlimplay by remember { mutableStateOf<UnlimplayMedia?>(null) }
+    var selectedEmbed by remember { mutableStateOf<Pair<TmdbEmbedSource, UnlimplayMedia>?>(null) }
     var selectedIptvSeries by remember { mutableStateOf<IptvSeries?>(null) }
 
     fun submitNsrSearch() {
@@ -171,7 +174,7 @@ fun SearchScreen(
                 val result = nsrRepository.searchWithCatalogFallback(
                     query = cleanQuery,
                     preferredType = when (selectedFilter) {
-                        "PelÃ­culas" -> NsrMediaType.MOVIE
+                        "Películas" -> NsrMediaType.MOVIE
                         "Series" -> NsrMediaType.SERIES
                         else -> null
                     }
@@ -182,7 +185,7 @@ fun SearchScreen(
                 }
             } catch (e: NsrPlayException) {
                 if (nsrSubmittedQuery == cleanQuery) {
-                    nsrError = e.message ?: "NSRPlay rechazÃ³ la bÃºsqueda."
+                    nsrError = e.message ?: "NSRPlay rechazó la búsqueda."
                 }
             } catch (_: Throwable) {
                 if (nsrSubmittedQuery == cleanQuery) {
@@ -211,7 +214,7 @@ fun SearchScreen(
                 val result = vimeusRepository.search(
                     query = cleanQuery,
                     preferredType = when (selectedFilter) {
-                        "PelÃ­culas" -> VimeusType.MOVIE
+                        "Películas" -> VimeusType.MOVIE
                         "Series" -> VimeusType.SERIES
                         else -> null
                     }
@@ -222,7 +225,7 @@ fun SearchScreen(
                 }
             } catch (e: Exception) {
                 if (vimeusSubmittedQuery == cleanQuery) {
-                    vimeusError = e.message ?: "Vimeus rechazÃ³ la bÃºsqueda."
+                    vimeusError = e.message ?: "Vimeus rechazó la búsqueda."
                 }
             } finally {
                 if (vimeusSubmittedQuery == cleanQuery) {
@@ -247,7 +250,7 @@ fun SearchScreen(
                 val result = unlimplayRepository.search(
                     query = cleanQuery,
                     preferredType = when (selectedFilter) {
-                        "PelÃ­culas" -> UnlimplayType.MOVIE
+                        "Películas" -> UnlimplayType.MOVIE
                         "Series" -> UnlimplayType.SERIES
                         else -> null
                     }
@@ -258,7 +261,7 @@ fun SearchScreen(
                 }
             } catch (e: Exception) {
                 if (unlimplaySubmittedQuery == cleanQuery) {
-                    unlimplayError = e.message ?: "Unlimplay rechazÃ³ la bÃºsqueda."
+                    unlimplayError = e.message ?: "Unlimplay rechazó la búsqueda."
                 }
             } finally {
                 if (unlimplaySubmittedQuery == cleanQuery) {
@@ -310,7 +313,7 @@ fun SearchScreen(
 
                 val matchesType = when (selectedFilter) {
                     "Canales" -> item.type == ItemType.LIVE
-                    "PelÃ­culas" -> item.type == ItemType.MOVIE
+                    "Películas" -> item.type == ItemType.MOVIE
                     "Series" -> item.type == ItemType.SERIES
                     else -> true
                 }
@@ -353,6 +356,17 @@ fun SearchScreen(
         return
     }
 
+    selectedEmbed?.let { (source, media) ->
+        TmdbEmbedDetailScreen(
+            source = source,
+            media = media,
+            repository = unlimplayRepository,
+            primaryColor = primaryColor,
+            onBack = { selectedEmbed = null }
+        )
+        return
+    }
+
     selectedUnlimplay?.let { media ->
         UnlimplayDetailScreen(
             media = media,
@@ -364,21 +378,21 @@ fun SearchScreen(
         return
     }
 
-    val showNsr = selectedFilter != "Canales" &&
+    val showNsr = "nsr" in enabledSources && selectedFilter != "Canales" &&
         nsrSubmittedQuery.isNotBlank() &&
         nsrSubmittedQuery == query.trim()
 
-    val showVimeus = selectedFilter != "Canales" &&
+    val showVimeus = "vimeus" in enabledSources && selectedFilter != "Canales" &&
         vimeusSubmittedQuery.isNotBlank() &&
         vimeusSubmittedQuery == query.trim()
 
-    val showUnlimplay = selectedFilter != "Canales" &&
+    val showUnlimplay = "unlimplay" in enabledSources && selectedFilter != "Canales" &&
         unlimplaySubmittedQuery.isNotBlank() &&
         unlimplaySubmittedQuery == query.trim()
 
     val nsrVisibleResults = remember(nsrResults, selectedFilter) {
         when (selectedFilter) {
-            "PelÃ­culas" -> nsrResults.filter { it.type == NsrMediaType.MOVIE }
+            "Películas" -> nsrResults.filter { it.type == NsrMediaType.MOVIE }
             "Series" -> nsrResults.filter { it.type == NsrMediaType.SERIES }
             else -> nsrResults
         }
@@ -386,7 +400,7 @@ fun SearchScreen(
 
     val vimeusVisibleResults = remember(vimeusResults, selectedFilter) {
         when (selectedFilter) {
-            "PelÃ­culas" -> vimeusResults.filter { it.type == VimeusType.MOVIE }
+            "Películas" -> vimeusResults.filter { it.type == VimeusType.MOVIE }
             "Series" -> vimeusResults.filter { it.type != VimeusType.MOVIE }
             else -> vimeusResults
         }
@@ -394,7 +408,7 @@ fun SearchScreen(
 
     val unlimplayVisibleResults = remember(unlimplayResults, selectedFilter) {
         when (selectedFilter) {
-            "PelÃ­culas" -> unlimplayResults.filter { it.type == UnlimplayType.MOVIE }
+            "Películas" -> unlimplayResults.filter { it.type == UnlimplayType.MOVIE }
             "Series" -> unlimplayResults.filter { it.type != UnlimplayType.MOVIE }
             else -> unlimplayResults
         }
@@ -427,7 +441,7 @@ fun SearchScreen(
                     posterUrl = result.item.logoUrl,
                     typeLabel = when (result.item.type) {
                         ItemType.LIVE -> "Canal"
-                        ItemType.MOVIE -> "PelÃ­cula"
+                        ItemType.MOVIE -> "Película"
                         ItemType.SERIES -> "Serie"
                         ItemType.ADULT -> "Adulto"
                     },
@@ -439,7 +453,7 @@ fun SearchScreen(
                     title = result.series.title,
                     posterUrl = result.series.posterUrl,
                     typeLabel = "Serie",
-                    subtitle = "${result.series.episodes.size} episodios Â· ${result.series.category}",
+                    subtitle = "${result.series.episodes.size} episodios · ${result.series.category}",
                     isWatched = false
                 )
             }
@@ -453,14 +467,14 @@ fun SearchScreen(
                 title = media.title,
                 posterUrl = media.posterUrl,
                 typeLabel = when (media.type) {
-                    VimeusType.MOVIE -> "PelÃ­cula"
+                    VimeusType.MOVIE -> "Película"
                     VimeusType.SERIES -> "Serie"
                     VimeusType.ANIME -> "Anime"
                 },
                 subtitle = listOfNotNull(
                     media.year,
                     media.totalSeasons.takeIf { it > 0 }?.let { "${it} temp." }
-                ).joinToString(" Â· ").ifBlank { null },
+                ).joinToString(" · ").ifBlank { null },
                 isWatched = watchedVimeus.contains(media.watchKey())
             )
         }
@@ -473,20 +487,21 @@ fun SearchScreen(
                 title = media.title,
                 posterUrl = media.posterUrl,
                 typeLabel = when (media.type) {
-                    UnlimplayType.MOVIE -> "PelÃ­cula"
+                    UnlimplayType.MOVIE -> "Película"
                     UnlimplayType.SERIES -> "Serie"
                     UnlimplayType.ANIME -> "Anime"
                 },
                 subtitle = listOfNotNull(
                     media.year,
-                    media.rating?.let { "â˜… %.1f".format(it) }
-                ).joinToString(" Â· ").ifBlank { null },
+                    media.rating?.let { "★. %.1f".format(it) }
+                ).joinToString(" · ").ifBlank { null },
                 isWatched = watchedUnlimplay.contains(media.watchKey())
             )
         }
     }
 
-    val showFacilitoplay = showUnlimplay
+    val showFacilitoplay = showUnlimplay && "facilitoplay" in enabledSources
+    val showTukiplay = showUnlimplay && "tukiplay" in enabledSources
     val facilitoplayBadgeColor = Color(0xFF00C2A8)
     val facilitoplayPosterItems = remember(unlimplayVisibleResults) {
         unlimplayVisibleResults.map { media ->
@@ -495,14 +510,35 @@ fun SearchScreen(
                 title = media.title,
                 posterUrl = media.posterUrl,
                 typeLabel = when (media.type) {
-                    UnlimplayType.MOVIE -> "PelÃ­cula"
+                    UnlimplayType.MOVIE -> "Película"
                     UnlimplayType.SERIES -> "Serie"
                     UnlimplayType.ANIME -> "Anime"
                 },
                 subtitle = listOfNotNull(
                     media.year,
-                    media.rating?.let { "â˜… %.1f".format(it) }
-                ).joinToString(" Â· ").ifBlank { null },
+                    media.rating?.let { "★. %.1f".format(it) }
+                ).joinToString(" · ").ifBlank { null },
+                isWatched = false
+            )
+        }
+    }
+
+    val tukiplayBadgeColor = Color(0xFFFFB300)
+    val tukiplayPosterItems = remember(unlimplayVisibleResults) {
+        unlimplayVisibleResults.map { media ->
+            SearchPosterItem(
+                key = "tukiplay:${media.id}",
+                title = media.title,
+                posterUrl = media.posterUrl,
+                typeLabel = when (media.type) {
+                    UnlimplayType.MOVIE -> "Película"
+                    UnlimplayType.SERIES -> "Serie"
+                    UnlimplayType.ANIME -> "Anime"
+                },
+                subtitle = listOfNotNull(
+                    media.year,
+                    media.rating?.let { "★ %.1f".format(it) }
+                ).joinToString(" · ").ifBlank { null },
                 isWatched = false
             )
         }
@@ -514,14 +550,93 @@ fun SearchScreen(
                 key = "nsr:${media.slug}",
                 title = media.title,
                 posterUrl = media.posterOrNull,
-                typeLabel = if (media.type == NsrMediaType.SERIES) "Serie" else "PelÃ­cula",
+                typeLabel = if (media.type == NsrMediaType.SERIES) "Serie" else "Película",
                 subtitle = listOfNotNull(
                     media.year,
-                    media.rating?.let { "â˜… $it" }
-                ).joinToString(" Â· ").ifBlank { null },
+                    media.rating?.let { "★. $it" }
+                ).joinToString(" · ").ifBlank { null },
                 isWatched = watchedNsr.contains(media.watchKey())
             )
         }
+    }
+
+    val providerSections = buildList {
+        if (showNsr) add(
+            ProviderSectionUi(
+                id = "nsr",
+                label = "NSRPlay",
+                badgeColor = Color(0xFF00D5FF),
+                items = nsrPosterItems,
+                resultCount = nsrVisibleResults.size,
+                isLoading = nsrLoading,
+                error = nsrError,
+                emptyMessage = "NSRPlay no devolvió títulos para \"$nsrSubmittedQuery\".",
+                onRetry = { submitNsrSearch() },
+                onOpen = { index -> selectedNsr = nsrVisibleResults[index] }
+            )
+        )
+        if (showVimeus) add(
+            ProviderSectionUi(
+                id = "vimeus",
+                label = "Vimeus",
+                badgeColor = VimeusBadgeColor,
+                items = vimeusPosterItems,
+                resultCount = vimeusVisibleResults.size,
+                isLoading = vimeusLoading,
+                error = vimeusError,
+                emptyMessage = "Vimeus no devolvió títulos para \"$vimeusSubmittedQuery\".",
+                onRetry = { submitVimeusSearch() },
+                onOpen = { index -> selectedVimeus = vimeusVisibleResults[index] }
+            )
+        )
+        if (showUnlimplay) add(
+            ProviderSectionUi(
+                id = "unlimplay",
+                label = "Unlimplay",
+                badgeColor = UnlimplayBadgeColor,
+                items = unlimplayPosterItems,
+                resultCount = unlimplayVisibleResults.size,
+                isLoading = unlimplayLoading,
+                error = unlimplayError,
+                emptyMessage = "Unlimplay no devolvió títulos para \"$unlimplaySubmittedQuery\".",
+                onRetry = { submitUnlimplaySearch() },
+                onOpen = { index -> selectedUnlimplay = unlimplayVisibleResults[index] }
+            )
+        )
+        if (showFacilitoplay) add(
+            ProviderSectionUi(
+                id = "facilitoplay",
+                label = "FacilitoPlay",
+                badgeColor = facilitoplayBadgeColor,
+                items = facilitoplayPosterItems,
+                resultCount = unlimplayVisibleResults.size,
+                isLoading = unlimplayLoading,
+                error = unlimplayError,
+                emptyMessage = "FacilitoPlay no devolvió títulos para \"$unlimplaySubmittedQuery\".",
+                onRetry = { submitUnlimplaySearch() },
+                onOpen = { index ->
+                    selectedEmbed = TmdbEmbedSource.FACILITOPLAY to unlimplayVisibleResults[index]
+                }
+            )
+        )
+        if (showTukiplay) add(
+            ProviderSectionUi(
+                id = "tukiplay",
+                label = "TukiPlay",
+                badgeColor = tukiplayBadgeColor,
+                items = tukiplayPosterItems,
+                resultCount = unlimplayVisibleResults.size,
+                isLoading = unlimplayLoading,
+                error = unlimplayError,
+                emptyMessage = "TukiPlay no devolvió títulos para \"$unlimplaySubmittedQuery\".",
+                onRetry = { submitUnlimplaySearch() },
+                onOpen = { index ->
+                    selectedEmbed = TmdbEmbedSource.TUKIPLAY to unlimplayVisibleResults[index]
+                }
+            )
+        )
+    }.sortedBy { section ->
+        videoSources.indexOfFirst { it.id == section.id }.let { if (it < 0) 99 else it }
     }
 
     Column(
@@ -574,7 +689,7 @@ fun SearchScreen(
                         IconButton(onClick = { query = "" }) {
                             Icon(
                                 imageVector = Icons.Default.Clear,
-                                contentDescription = "Limpiar bÃºsqueda",
+                                contentDescription = "Limpiar búsqueda",
                                 tint = Color(0xFF8F9DAA),
                                 modifier = Modifier.size(18.dp)
                             )
@@ -647,7 +762,7 @@ fun SearchScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Search,
-                        contentDescription = "Editar bÃºsqueda",
+                        contentDescription = "Editar búsqueda",
                         tint = primaryColor,
                         modifier = Modifier.size(19.dp)
                     )
@@ -659,7 +774,7 @@ fun SearchScreen(
                 contentPadding = PaddingValues(end = 12.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                items(listOf("Todo", "Canales", "PelÃ­culas", "Series")) { filter ->
+                items(listOf("Todo", "Canales", "Películas", "Series")) { filter ->
                     val isSelected = selectedFilter == filter
                     FilterChip(
                         selected = isSelected,
@@ -772,7 +887,7 @@ fun SearchScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "BÃºsqueda unificada",
+                        text = "Búsqueda unificada",
                         color = Color.White,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
@@ -815,7 +930,7 @@ fun SearchScreen(
                     )
                     Spacer(modifier = Modifier.height(5.dp))
                     Text(
-                        text = "Los resultados aparecerÃ¡n despuÃ©s de confirmar la bÃºsqueda, no mientras escribes.",
+                        text = "Los resultados aparecerán después de confirmar la búsqueda, no mientras escribes.",
                         color = Color(0xFF8F9DAA),
                         fontSize = 11.sp,
                         textAlign = TextAlign.Center
@@ -863,9 +978,9 @@ fun SearchScreen(
                         ) {
                             Text(
                                 text = if (showNsr || showVimeus || showUnlimplay) {
-                                    "Reintentar bÃºsqueda en proveedores"
+                                    "Reintentar búsqueda en proveedores"
                                 } else {
-                                    "Buscar tambiÃ©n en NSRPlay y Vimeus"
+                                    "Buscar también en NSRPlay y Vimeus"
                                 },
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
@@ -901,7 +1016,7 @@ fun SearchScreen(
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "En tus listas IPTV Â· ${iptvResults.size} resultados",
+                                text = "En tus listas IPTV · ${iptvResults.size} resultados",
                                 color = Color.White,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
@@ -929,7 +1044,7 @@ fun SearchScreen(
                     }
                 }
 
-                if (showVimeus) {
+                providerSections.forEach { section ->
                     item {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -938,11 +1053,11 @@ fun SearchScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(4.dp))
-                                    .background(VimeusBadgeColor)
+                                    .background(section.badgeColor)
                                     .padding(horizontal = 5.dp, vertical = 2.dp)
                             ) {
                                 Text(
-                                    text = "VIMEUS",
+                                    text = section.label.uppercase(),
                                     color = Color.Black,
                                     fontSize = 8.sp,
                                     fontWeight = FontWeight.Black
@@ -950,23 +1065,23 @@ fun SearchScreen(
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (vimeusVisibleResults.isNotEmpty()) {
-                                    "Vimeus Â· ${vimeusVisibleResults.size} resultados"
+                                text = if (section.resultCount > 0) {
+                                    "${section.label} · ${section.resultCount} resultados"
                                 } else {
-                                    "Vimeus"
+                                    section.label
                                 },
                                 color = Color.White,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
                             Spacer(modifier = Modifier.weight(1f))
-                            TextButton(onClick = { submitVimeusSearch() }) {
+                            TextButton(onClick = section.onRetry) {
                                 Text("Actualizar", color = primaryColor, fontSize = 10.sp)
                             }
                         }
                     }
 
-                    if (vimeusLoading) {
+                    if (section.isLoading) {
                         item {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -979,7 +1094,7 @@ fun SearchScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Buscando en Vimeus...",
+                                    "Buscando en ${section.label}...",
                                     color = Color(0xFF8F9DAA),
                                     fontSize = 11.sp
                                 )
@@ -987,7 +1102,7 @@ fun SearchScreen(
                         }
                     }
 
-                    vimeusError?.let { message ->
+                    section.error?.let { message ->
                         item {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
@@ -996,293 +1111,32 @@ fun SearchScreen(
                                     fontSize = 11.sp,
                                     modifier = Modifier.weight(1f)
                                 )
-                                TextButton(onClick = { submitVimeusSearch() }) {
+                                TextButton(onClick = section.onRetry) {
                                     Text("Reintentar", color = primaryColor, fontSize = 10.sp)
                                 }
                             }
                         }
                     }
 
-                    if (!vimeusLoading && vimeusError == null && vimeusVisibleResults.isEmpty()) {
+                    if (!section.isLoading && section.error == null && section.resultCount == 0) {
                         item {
                             Text(
-                                text = "Vimeus no devolviÃ³ tÃ­tulos para \"$vimeusSubmittedQuery\".",
+                                text = section.emptyMessage,
                                 color = Color(0xFF7F8F9F),
                                 fontSize = 10.sp
                             )
                         }
                     }
 
-                    if (vimeusVisibleResults.isNotEmpty()) {
+                    if (section.items.isNotEmpty()) {
                         item {
                             SearchPosterCarousel(
-                                items = vimeusPosterItems,
-                                accentColor = VimeusBadgeColor,
+                                items = section.items,
+                                accentColor = section.badgeColor,
                                 posterScale = posterScale,
                                 onOpen = { index ->
                                     keyboard?.hide()
-                                    selectedVimeus = vimeusVisibleResults[index]
-                                }
-                            )
-                        }
-                    }
-                }
-
-
-
-                if (showNsr) {
-                    item {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 10.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(NsrBadgeColor)
-                                    .padding(horizontal = 5.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "NSRPLAY",
-                                    color = Color.Black,
-                                    fontSize = 8.sp,
-                                    fontWeight = FontWeight.Black
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (nsrVisibleResults.isNotEmpty()) {
-                                    "NSRPlay Â· ${nsrVisibleResults.size} resultados"
-                                } else {
-                                    "NSRPlay"
-                                },
-                                color = Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.weight(1f))
-                            TextButton(onClick = { submitNsrSearch() }) {
-                                Text("Actualizar", color = primaryColor, fontSize = 10.sp)
-                            }
-                        }
-                    }
-
-                    if (nsrLoading) {
-                        item {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(vertical = 10.dp)
-                            ) {
-                                CircularProgressIndicator(
-                                    color = primaryColor,
-                                    strokeWidth = 2.dp,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Buscando en NSRPlay...",
-                                    color = Color(0xFF8F9DAA),
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-                    }
-
-                    nsrError?.let { message ->
-                        item {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = message,
-                                    color = Color(0xFFFF8A96),
-                                    fontSize = 11.sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                TextButton(onClick = { submitNsrSearch() }) {
-                                    Text("Reintentar", color = primaryColor, fontSize = 10.sp)
-                                }
-                            }
-                        }
-                    }
-
-                    if (!nsrLoading && nsrError == null && nsrVisibleResults.isEmpty()) {
-                        item {
-                            Text(
-                                text = "NSRPlay no devolviÃ³ tÃ­tulos para \"$nsrSubmittedQuery\".",
-                                color = Color(0xFF7F8F9F),
-                                fontSize = 10.sp
-                            )
-                        }
-                    }
-
-                    if (nsrVisibleResults.isNotEmpty()) {
-                        item {
-                            SearchPosterCarousel(
-                                items = nsrPosterItems,
-                                accentColor = NsrBadgeColor,
-                                posterScale = posterScale,
-                                onOpen = { index ->
-                                    keyboard?.hide()
-                                    selectedNsr = nsrVisibleResults[index]
-                                }
-                            )
-                        }
-                    }
-                }
-
-                if (showUnlimplay) {
-                    item {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 10.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(UnlimplayBadgeColor)
-                                    .padding(horizontal = 5.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "UNLIMPLAY",
-                                    color = Color.Black,
-                                    fontSize = 8.sp,
-                                    fontWeight = FontWeight.Black
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (unlimplayVisibleResults.isNotEmpty()) {
-                                    "Unlimplay Â· ${unlimplayVisibleResults.size} resultados"
-                                } else {
-                                    "Unlimplay"
-                                },
-                                color = Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.weight(1f))
-                            TextButton(onClick = { submitUnlimplaySearch() }) {
-                                Text("Actualizar", color = primaryColor, fontSize = 10.sp)
-                            }
-                        }
-                    }
-
-                    if (unlimplayLoading) {
-                        item {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(vertical = 10.dp)
-                            ) {
-                                CircularProgressIndicator(
-                                    color = primaryColor,
-                                    strokeWidth = 2.dp,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Buscando en Unlimplay...",
-                                    color = Color(0xFF8F9DAA),
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-                    }
-
-                    unlimplayError?.let { message ->
-                        item {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = message,
-                                    color = Color(0xFFFF8A96),
-                                    fontSize = 11.sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                TextButton(onClick = { submitUnlimplaySearch() }) {
-                                    Text("Reintentar", color = primaryColor, fontSize = 10.sp)
-                                }
-                            }
-                        }
-                    }
-
-                    if (!unlimplayLoading && unlimplayError == null && unlimplayVisibleResults.isEmpty()) {
-                        item {
-                            Text(
-                                text = "Unlimplay no devolviÃ³ tÃ­tulos para \"$unlimplaySubmittedQuery\".",
-                                color = Color(0xFF7F8F9F),
-                                fontSize = 10.sp
-                            )
-                        }
-                    }
-
-                    if (unlimplayVisibleResults.isNotEmpty()) {
-                        item {
-                            SearchPosterCarousel(
-                                items = unlimplayPosterItems,
-                                accentColor = UnlimplayBadgeColor,
-                                posterScale = posterScale,
-                                onOpen = { index ->
-                                    keyboard?.hide()
-                                    selectedUnlimplay = unlimplayVisibleResults[index]
-                                }
-                            )
-                        }
-                    }
-                }
-
-                if (showFacilitoplay) {
-                    item {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 10.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(facilitoplayBadgeColor)
-                                    .padding(horizontal = 5.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = "FACILITOPLAY",
-                                    color = Color.Black,
-                                    fontSize = 8.sp,
-                                    fontWeight = FontWeight.Black
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (unlimplayVisibleResults.isNotEmpty()) {
-                                    "FacilitoPlay Â· ${unlimplayVisibleResults.size} resultados"
-                                } else {
-                                    "FacilitoPlay"
-                                },
-                                color = Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-
-                    if (!unlimplayLoading && unlimplayError == null && unlimplayVisibleResults.isEmpty()) {
-                        item {
-                            Text(
-                                text = "FacilitoPlay no devolviÃ³ tÃ­tulos para \"$unlimplaySubmittedQuery\".",
-                                color = Color(0xFF7F8F9F),
-                                fontSize = 10.sp
-                            )
-                        }
-                    }
-
-                    if (unlimplayVisibleResults.isNotEmpty()) {
-                        item {
-                            SearchPosterCarousel(
-                                items = facilitoplayPosterItems,
-                                accentColor = facilitoplayBadgeColor,
-                                posterScale = posterScale,
-                                onOpen = { index ->
-                                    keyboard?.hide()
-                                    openFacilitoplay(
-                                        context = context,
-                                        media = unlimplayVisibleResults[index]
-                                    )
+                                    section.onOpen(index)
                                 }
                             )
                         }
@@ -1295,22 +1149,17 @@ fun SearchScreen(
 
 
 
-private fun facilitoplayUrl(media: UnlimplayMedia): String {
-    val path = when (media.type) {
-        UnlimplayType.MOVIE -> "/e/pelicula/${media.id}"
-        UnlimplayType.ANIME -> "/e/anime/${media.id}/1/1"
-        UnlimplayType.SERIES -> "/e/serie/${media.id}/1/1"
-    }
-    return "https://facilitoplay.com$path"
-}
 
-private fun openFacilitoplay(context: Context, media: UnlimplayMedia) {
-    val intent = Intent(context, PlayerWebActivity::class.java).apply {
-        putExtra(PlayerWebActivity.EXTRA_URL, facilitoplayUrl(media))
-        putExtra(PlayerWebActivity.EXTRA_TITLE, media.title)
-        putExtra(PlayerWebActivity.EXTRA_REFERER, "https://facilitoplay.com/")
-        putExtra(PlayerWebActivity.EXTRA_USE_IFRAME, true)
-    }
-    context.startActivity(intent)
-}
 
+private data class ProviderSectionUi(
+    val id: String,
+    val label: String,
+    val badgeColor: Color,
+    val items: List<SearchPosterItem>,
+    val resultCount: Int,
+    val isLoading: Boolean,
+    val error: String?,
+    val emptyMessage: String,
+    val onRetry: () -> Unit,
+    val onOpen: (Int) -> Unit
+)
