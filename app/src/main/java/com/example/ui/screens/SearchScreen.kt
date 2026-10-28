@@ -1,4 +1,7 @@
-package com.example.ui.screens
+﻿package com.example.ui.screens
+
+import android.content.Context
+import android.content.Intent
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -98,6 +101,7 @@ import com.example.ui.components.SearchPosterCarousel
 import com.example.ui.components.SearchPosterItem
 import com.example.ui.components.UnlimplayBadgeColor
 import com.example.ui.components.VimeusBadgeColor
+import com.example.webplayer.PlayerWebActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -167,7 +171,7 @@ fun SearchScreen(
                 val result = nsrRepository.searchWithCatalogFallback(
                     query = cleanQuery,
                     preferredType = when (selectedFilter) {
-                        "Películas" -> NsrMediaType.MOVIE
+                        "PelÃ­culas" -> NsrMediaType.MOVIE
                         "Series" -> NsrMediaType.SERIES
                         else -> null
                     }
@@ -178,7 +182,7 @@ fun SearchScreen(
                 }
             } catch (e: NsrPlayException) {
                 if (nsrSubmittedQuery == cleanQuery) {
-                    nsrError = e.message ?: "NSRPlay rechazó la búsqueda."
+                    nsrError = e.message ?: "NSRPlay rechazÃ³ la bÃºsqueda."
                 }
             } catch (_: Throwable) {
                 if (nsrSubmittedQuery == cleanQuery) {
@@ -207,7 +211,7 @@ fun SearchScreen(
                 val result = vimeusRepository.search(
                     query = cleanQuery,
                     preferredType = when (selectedFilter) {
-                        "Películas" -> VimeusType.MOVIE
+                        "PelÃ­culas" -> VimeusType.MOVIE
                         "Series" -> VimeusType.SERIES
                         else -> null
                     }
@@ -218,7 +222,7 @@ fun SearchScreen(
                 }
             } catch (e: Exception) {
                 if (vimeusSubmittedQuery == cleanQuery) {
-                    vimeusError = e.message ?: "Vimeus rechazó la búsqueda."
+                    vimeusError = e.message ?: "Vimeus rechazÃ³ la bÃºsqueda."
                 }
             } finally {
                 if (vimeusSubmittedQuery == cleanQuery) {
@@ -243,7 +247,7 @@ fun SearchScreen(
                 val result = unlimplayRepository.search(
                     query = cleanQuery,
                     preferredType = when (selectedFilter) {
-                        "Películas" -> UnlimplayType.MOVIE
+                        "PelÃ­culas" -> UnlimplayType.MOVIE
                         "Series" -> UnlimplayType.SERIES
                         else -> null
                     }
@@ -254,7 +258,7 @@ fun SearchScreen(
                 }
             } catch (e: Exception) {
                 if (unlimplaySubmittedQuery == cleanQuery) {
-                    unlimplayError = e.message ?: "Unlimplay rechazó la búsqueda."
+                    unlimplayError = e.message ?: "Unlimplay rechazÃ³ la bÃºsqueda."
                 }
             } finally {
                 if (unlimplaySubmittedQuery == cleanQuery) {
@@ -306,7 +310,7 @@ fun SearchScreen(
 
                 val matchesType = when (selectedFilter) {
                     "Canales" -> item.type == ItemType.LIVE
-                    "Películas" -> item.type == ItemType.MOVIE
+                    "PelÃ­culas" -> item.type == ItemType.MOVIE
                     "Series" -> item.type == ItemType.SERIES
                     else -> true
                 }
@@ -374,7 +378,7 @@ fun SearchScreen(
 
     val nsrVisibleResults = remember(nsrResults, selectedFilter) {
         when (selectedFilter) {
-            "Películas" -> nsrResults.filter { it.type == NsrMediaType.MOVIE }
+            "PelÃ­culas" -> nsrResults.filter { it.type == NsrMediaType.MOVIE }
             "Series" -> nsrResults.filter { it.type == NsrMediaType.SERIES }
             else -> nsrResults
         }
@@ -382,7 +386,7 @@ fun SearchScreen(
 
     val vimeusVisibleResults = remember(vimeusResults, selectedFilter) {
         when (selectedFilter) {
-            "Películas" -> vimeusResults.filter { it.type == VimeusType.MOVIE }
+            "PelÃ­culas" -> vimeusResults.filter { it.type == VimeusType.MOVIE }
             "Series" -> vimeusResults.filter { it.type != VimeusType.MOVIE }
             else -> vimeusResults
         }
@@ -390,7 +394,7 @@ fun SearchScreen(
 
     val unlimplayVisibleResults = remember(unlimplayResults, selectedFilter) {
         when (selectedFilter) {
-            "Películas" -> unlimplayResults.filter { it.type == UnlimplayType.MOVIE }
+            "PelÃ­culas" -> unlimplayResults.filter { it.type == UnlimplayType.MOVIE }
             "Series" -> unlimplayResults.filter { it.type != UnlimplayType.MOVIE }
             else -> unlimplayResults
         }
@@ -423,7 +427,7 @@ fun SearchScreen(
                     posterUrl = result.item.logoUrl,
                     typeLabel = when (result.item.type) {
                         ItemType.LIVE -> "Canal"
-                        ItemType.MOVIE -> "Película"
+                        ItemType.MOVIE -> "PelÃ­cula"
                         ItemType.SERIES -> "Serie"
                         ItemType.ADULT -> "Adulto"
                     },
@@ -435,7 +439,7 @@ fun SearchScreen(
                     title = result.series.title,
                     posterUrl = result.series.posterUrl,
                     typeLabel = "Serie",
-                    subtitle = "${result.series.episodes.size} episodios · ${result.series.category}",
+                    subtitle = "${result.series.episodes.size} episodios Â· ${result.series.category}",
                     isWatched = false
                 )
             }
@@ -449,14 +453,14 @@ fun SearchScreen(
                 title = media.title,
                 posterUrl = media.posterUrl,
                 typeLabel = when (media.type) {
-                    VimeusType.MOVIE -> "Película"
+                    VimeusType.MOVIE -> "PelÃ­cula"
                     VimeusType.SERIES -> "Serie"
                     VimeusType.ANIME -> "Anime"
                 },
                 subtitle = listOfNotNull(
                     media.year,
                     media.totalSeasons.takeIf { it > 0 }?.let { "${it} temp." }
-                ).joinToString(" · ").ifBlank { null },
+                ).joinToString(" Â· ").ifBlank { null },
                 isWatched = watchedVimeus.contains(media.watchKey())
             )
         }
@@ -469,15 +473,37 @@ fun SearchScreen(
                 title = media.title,
                 posterUrl = media.posterUrl,
                 typeLabel = when (media.type) {
-                    UnlimplayType.MOVIE -> "Película"
+                    UnlimplayType.MOVIE -> "PelÃ­cula"
                     UnlimplayType.SERIES -> "Serie"
                     UnlimplayType.ANIME -> "Anime"
                 },
                 subtitle = listOfNotNull(
                     media.year,
-                    media.rating?.let { "★ %.1f".format(it) }
-                ).joinToString(" · ").ifBlank { null },
+                    media.rating?.let { "â˜… %.1f".format(it) }
+                ).joinToString(" Â· ").ifBlank { null },
                 isWatched = watchedUnlimplay.contains(media.watchKey())
+            )
+        }
+    }
+
+    val showFacilitoplay = showUnlimplay
+    val facilitoplayBadgeColor = Color(0xFF00C2A8)
+    val facilitoplayPosterItems = remember(unlimplayVisibleResults) {
+        unlimplayVisibleResults.map { media ->
+            SearchPosterItem(
+                key = "facilitoplay:${media.id}",
+                title = media.title,
+                posterUrl = media.posterUrl,
+                typeLabel = when (media.type) {
+                    UnlimplayType.MOVIE -> "PelÃ­cula"
+                    UnlimplayType.SERIES -> "Serie"
+                    UnlimplayType.ANIME -> "Anime"
+                },
+                subtitle = listOfNotNull(
+                    media.year,
+                    media.rating?.let { "â˜… %.1f".format(it) }
+                ).joinToString(" Â· ").ifBlank { null },
+                isWatched = false
             )
         }
     }
@@ -488,11 +514,11 @@ fun SearchScreen(
                 key = "nsr:${media.slug}",
                 title = media.title,
                 posterUrl = media.posterOrNull,
-                typeLabel = if (media.type == NsrMediaType.SERIES) "Serie" else "Película",
+                typeLabel = if (media.type == NsrMediaType.SERIES) "Serie" else "PelÃ­cula",
                 subtitle = listOfNotNull(
                     media.year,
-                    media.rating?.let { "★ $it" }
-                ).joinToString(" · ").ifBlank { null },
+                    media.rating?.let { "â˜… $it" }
+                ).joinToString(" Â· ").ifBlank { null },
                 isWatched = watchedNsr.contains(media.watchKey())
             )
         }
@@ -528,7 +554,7 @@ fun SearchScreen(
             },
             placeholder = {
                 Text(
-                    "Buscar en IPTV, NSRPlay y Vimeus...",
+                    "Buscar en IPTV, NSRPlay, Vimeus y FacilitoPlay...",
                     fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -548,7 +574,7 @@ fun SearchScreen(
                         IconButton(onClick = { query = "" }) {
                             Icon(
                                 imageVector = Icons.Default.Clear,
-                                contentDescription = "Limpiar búsqueda",
+                                contentDescription = "Limpiar bÃºsqueda",
                                 tint = Color(0xFF8F9DAA),
                                 modifier = Modifier.size(18.dp)
                             )
@@ -621,7 +647,7 @@ fun SearchScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Search,
-                        contentDescription = "Editar búsqueda",
+                        contentDescription = "Editar bÃºsqueda",
                         tint = primaryColor,
                         modifier = Modifier.size(19.dp)
                     )
@@ -633,7 +659,7 @@ fun SearchScreen(
                 contentPadding = PaddingValues(end = 12.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                items(listOf("Todo", "Canales", "Películas", "Series")) { filter ->
+                items(listOf("Todo", "Canales", "PelÃ­culas", "Series")) { filter ->
                     val isSelected = selectedFilter == filter
                     FilterChip(
                         selected = isSelected,
@@ -746,7 +772,7 @@ fun SearchScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "Búsqueda unificada",
+                        text = "BÃºsqueda unificada",
                         color = Color.White,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
@@ -789,7 +815,7 @@ fun SearchScreen(
                     )
                     Spacer(modifier = Modifier.height(5.dp))
                     Text(
-                        text = "Los resultados aparecerán después de confirmar la búsqueda, no mientras escribes.",
+                        text = "Los resultados aparecerÃ¡n despuÃ©s de confirmar la bÃºsqueda, no mientras escribes.",
                         color = Color(0xFF8F9DAA),
                         fontSize = 11.sp,
                         textAlign = TextAlign.Center
@@ -816,7 +842,7 @@ fun SearchScreen(
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = if (showNsr || showVimeus || showUnlimplay) {
-                            "No se encontraron coincidencias para \"$query\" en tus listas, NSRPlay, Vimeus ni Unlimplay."
+                            "No se encontraron coincidencias para \"$query\" en tus listas, NSRPlay, Vimeus, Unlimplay ni FacilitoPlay."
                         } else {
                             "No se encontraron coincidencias para \"$query\" en tus listas IPTV."
                         },
@@ -837,9 +863,9 @@ fun SearchScreen(
                         ) {
                             Text(
                                 text = if (showNsr || showVimeus || showUnlimplay) {
-                                    "Reintentar búsqueda en proveedores"
+                                    "Reintentar bÃºsqueda en proveedores"
                                 } else {
-                                    "Buscar también en NSRPlay y Vimeus"
+                                    "Buscar tambiÃ©n en NSRPlay y Vimeus"
                                 },
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
@@ -875,7 +901,7 @@ fun SearchScreen(
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "En tus listas IPTV · ${iptvResults.size} resultados",
+                                text = "En tus listas IPTV Â· ${iptvResults.size} resultados",
                                 color = Color.White,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
@@ -925,7 +951,7 @@ fun SearchScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = if (vimeusVisibleResults.isNotEmpty()) {
-                                    "Vimeus · ${vimeusVisibleResults.size} resultados"
+                                    "Vimeus Â· ${vimeusVisibleResults.size} resultados"
                                 } else {
                                     "Vimeus"
                                 },
@@ -980,7 +1006,7 @@ fun SearchScreen(
                     if (!vimeusLoading && vimeusError == null && vimeusVisibleResults.isEmpty()) {
                         item {
                             Text(
-                                text = "Vimeus no devolvió títulos para \"$vimeusSubmittedQuery\".",
+                                text = "Vimeus no devolviÃ³ tÃ­tulos para \"$vimeusSubmittedQuery\".",
                                 color = Color(0xFF7F8F9F),
                                 fontSize = 10.sp
                             )
@@ -1026,7 +1052,7 @@ fun SearchScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = if (nsrVisibleResults.isNotEmpty()) {
-                                    "NSRPlay · ${nsrVisibleResults.size} resultados"
+                                    "NSRPlay Â· ${nsrVisibleResults.size} resultados"
                                 } else {
                                     "NSRPlay"
                                 },
@@ -1081,7 +1107,7 @@ fun SearchScreen(
                     if (!nsrLoading && nsrError == null && nsrVisibleResults.isEmpty()) {
                         item {
                             Text(
-                                text = "NSRPlay no devolvió títulos para \"$nsrSubmittedQuery\".",
+                                text = "NSRPlay no devolviÃ³ tÃ­tulos para \"$nsrSubmittedQuery\".",
                                 color = Color(0xFF7F8F9F),
                                 fontSize = 10.sp
                             )
@@ -1125,7 +1151,7 @@ fun SearchScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = if (unlimplayVisibleResults.isNotEmpty()) {
-                                    "Unlimplay · ${unlimplayVisibleResults.size} resultados"
+                                    "Unlimplay Â· ${unlimplayVisibleResults.size} resultados"
                                 } else {
                                     "Unlimplay"
                                 },
@@ -1180,7 +1206,7 @@ fun SearchScreen(
                     if (!unlimplayLoading && unlimplayError == null && unlimplayVisibleResults.isEmpty()) {
                         item {
                             Text(
-                                text = "Unlimplay no devolvió títulos para \"$unlimplaySubmittedQuery\".",
+                                text = "Unlimplay no devolviÃ³ tÃ­tulos para \"$unlimplaySubmittedQuery\".",
                                 color = Color(0xFF7F8F9F),
                                 fontSize = 10.sp
                             )
@@ -1201,8 +1227,90 @@ fun SearchScreen(
                         }
                     }
                 }
+
+                if (showFacilitoplay) {
+                    item {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 10.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(facilitoplayBadgeColor)
+                                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "FACILITOPLAY",
+                                    color = Color.Black,
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Black
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (unlimplayVisibleResults.isNotEmpty()) {
+                                    "FacilitoPlay Â· ${unlimplayVisibleResults.size} resultados"
+                                } else {
+                                    "FacilitoPlay"
+                                },
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    if (!unlimplayLoading && unlimplayError == null && unlimplayVisibleResults.isEmpty()) {
+                        item {
+                            Text(
+                                text = "FacilitoPlay no devolviÃ³ tÃ­tulos para \"$unlimplaySubmittedQuery\".",
+                                color = Color(0xFF7F8F9F),
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+
+                    if (unlimplayVisibleResults.isNotEmpty()) {
+                        item {
+                            SearchPosterCarousel(
+                                items = facilitoplayPosterItems,
+                                accentColor = facilitoplayBadgeColor,
+                                posterScale = posterScale,
+                                onOpen = { index ->
+                                    keyboard?.hide()
+                                    openFacilitoplay(
+                                        context = context,
+                                        media = unlimplayVisibleResults[index]
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
     }
+}
+
+
+
+private fun facilitoplayUrl(media: UnlimplayMedia): String {
+    val path = when (media.type) {
+        UnlimplayType.MOVIE -> "/e/pelicula/${media.id}"
+        UnlimplayType.ANIME -> "/e/anime/${media.id}/1/1"
+        UnlimplayType.SERIES -> "/e/serie/${media.id}/1/1"
+    }
+    return "https://facilitoplay.com$path"
+}
+
+private fun openFacilitoplay(context: Context, media: UnlimplayMedia) {
+    val intent = Intent(context, PlayerWebActivity::class.java).apply {
+        putExtra(PlayerWebActivity.EXTRA_URL, facilitoplayUrl(media))
+        putExtra(PlayerWebActivity.EXTRA_TITLE, media.title)
+        putExtra(PlayerWebActivity.EXTRA_REFERER, "https://facilitoplay.com/")
+        putExtra(PlayerWebActivity.EXTRA_USE_IFRAME, true)
+    }
+    context.startActivity(intent)
 }
 
