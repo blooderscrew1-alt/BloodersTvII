@@ -87,6 +87,9 @@ class SmartPlayerManager(private val context: Context) {
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private val _mp2Audio = MutableStateFlow(false)
+    val mp2Audio: StateFlow<Boolean> = _mp2Audio.asStateFlow()
+
     private val _currentPosition = MutableStateFlow(0L)
     val currentPosition: StateFlow<Long> = _currentPosition.asStateFlow()
 
@@ -122,7 +125,7 @@ class SmartPlayerManager(private val context: Context) {
 
     private var vlcLaunchedForUrl: String? = null
 
-    private fun launchVlcFallback() {
+    fun openVlcFallback() {
         val url = currentStreamUrl ?: return
         if (vlcLaunchedForUrl == url) return
         vlcLaunchedForUrl = url
@@ -132,7 +135,7 @@ class SmartPlayerManager(private val context: Context) {
         }
         try {
             context.startActivity(intent)
-            exoPlayer?.stop()
+            exoPlayer?.pause()
         } catch (_: Throwable) {
             _errorMessage.value =
                 "Este canal usa audio MP2, que Android no decodifica. " +
@@ -149,7 +152,7 @@ class SmartPlayerManager(private val context: Context) {
                     mime == "audio/mpeg-l2" || mime == "audio/mpeg"
                 }
         }
-        if (mp2) launchVlcFallback()
+        if (mp2) _mp2Audio.value = true
     }
 
     private fun buildPlayer(bufferMode: BufferMode) {
@@ -222,6 +225,7 @@ class SmartPlayerManager(private val context: Context) {
     fun playStream(url: String, startPositionMs: Long = 0L, autoPlay: Boolean = true) {
         currentStreamUrl = url
         vlcLaunchedForUrl = null
+        _mp2Audio.value = false
         _errorMessage.value = null
         _playbackEnded.value = false
         val player = getPlayer()

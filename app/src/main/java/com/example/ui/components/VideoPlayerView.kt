@@ -38,6 +38,7 @@ fun VideoPlayerView(
     val context = LocalContext.current
     val isBuffering by playerManager.isBuffering.collectAsState()
     val errorMessage by playerManager.errorMessage.collectAsState()
+    val isMp2Audio by playerManager.mp2Audio.collectAsState()
 
     val playerView = remember {
         PlayerView(context).apply {
@@ -62,6 +63,19 @@ fun VideoPlayerView(
             factory = { playerView },
             modifier = Modifier.fillMaxSize()
         )
+
+        if (isMp2Audio) {
+            Text(
+                text = "Audio MP2 · pantalla completa abre VLC",
+                color = Color(0xFFFFD54F),
+                fontSize = 10.sp,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(8.dp)
+                    .background(Color(0x99000000))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+        }
 
         if (isBuffering) {
             Box(

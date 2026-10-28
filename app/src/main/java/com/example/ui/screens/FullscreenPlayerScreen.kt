@@ -97,6 +97,7 @@ fun FullscreenPlayerScreen(
     val allItems by repository.items.collectAsState()
     val watchedIds by repository.watchedEpisodeIds.collectAsState()
     val isPlaying by playerManager.isPlaying.collectAsState()
+    val mp2Audio by playerManager.mp2Audio.collectAsState()
     val currentPos by playerManager.currentPosition.collectAsState()
     val duration by playerManager.duration.collectAsState()
     val playbackEnded by playerManager.playbackEnded.collectAsState()
@@ -106,6 +107,14 @@ fun FullscreenPlayerScreen(
     var showControls by remember { mutableStateOf(true) }
     var showChannelDrawer by remember { mutableStateOf(false) }
     var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
+    var openedVlcFor by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(mp2Audio, activeItem.id) {
+        if (mp2Audio && openedVlcFor != activeItem.id) {
+            openedVlcFor = activeItem.id
+            playerManager.openVlcFallback()
+        }
+    }
 
     fun switchTo(item: PlaylistItem) {
         val resumePosition = if (item.type != ItemType.LIVE) {
