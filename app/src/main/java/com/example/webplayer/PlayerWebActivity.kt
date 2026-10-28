@@ -474,6 +474,13 @@ class PlayerWebActivity : ComponentActivity() {
             allowContentAccess = false
             javaScriptCanOpenWindowsAutomatically = false
             setSupportMultipleWindows(false)
+            if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+                WebViewCompat.addDocumentStartJavaScript(
+                    webView,
+                    PlayerAdBlocker.POPUP_GUARD_SCRIPT,
+                    setOf("*")
+                )
+            }
             loadWithOverviewMode = true
             useWideViewPort = true
             setSupportZoom(false)
@@ -530,6 +537,7 @@ class PlayerWebActivity : ComponentActivity() {
                 }
                 if (PlayerAdBlocker.isAdUrl(url, blockGamblingAds)) return true
                 if (extensionNetworkFilter.shouldBlock(url)) return true
+                if (request.isForMainFrame && !isAllowedTopLevelNavigation(url)) return true
 
                 // Extension redirect rules apply to top-level navigations.
                 val redirect = extensionNetworkFilter.redirectFor(url)
@@ -566,6 +574,7 @@ class PlayerWebActivity : ComponentActivity() {
                 isLoading = false
                 loadProgress = 100
                 view?.evaluateJavascript(PlayerAdBlocker.PAGE_SCRIPT, null)
+                view?.evaluateJavascript(PlayerAdBlocker.POPUP_GUARD_SCRIPT, null)
                 view?.evaluateJavascript(PlayerAdBlocker.AUTOPLAY_SCRIPT, null)
                 if (episodeIndex in 0 until episodeUrls.lastIndex) {
                     view?.evaluateJavascript(AUTO_NEXT_SCRIPT, null)
@@ -671,6 +680,24 @@ class PlayerWebActivity : ComponentActivity() {
                 request?.deny()
             }
         }
+    }
+
+    private fun isAllowedTopLevelNavigation(url: String): Boolean {
+        val target = runCatching { android.net.Uri.parse(url).host.orEmpty().lowercase() }
+            .getOrDefault("")
+        if (target.isBlank()) return true
+        val base = runCatching { android.net.Uri.parse(startUrl).host.orEmpty().lowercase() }
+            .getOrDefault("")
+        if (base.isNotBlank() && (target == base || target.endsWith(".$base"))) return true
+        val allowed = listOf(
+            "nsrplay.space", "vimeus.com", "vimeos.com", "vimeos.net",
+            "unlimplay.com", "facilitoplay.com", "tukiplay.com",
+            "cloudflare.com", "challenges.cloudflare.com", "google.com",
+            "gstatic.com", "googleapis.com", "googlevideo.com", "youtube.com",
+            "ytimg.com", "jsdelivr.net", "jwplayer.com", "jwpcdn.com",
+            "cloudfront.net", "akamaihd.net", "akamaized.net"
+        )
+        return allowed.any { target == it || target.endsWith(".$it") }
     }
 
     private fun handleBack() {
