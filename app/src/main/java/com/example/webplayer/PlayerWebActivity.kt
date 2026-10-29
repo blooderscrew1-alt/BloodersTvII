@@ -178,6 +178,7 @@ class PlayerWebActivity : ComponentActivity() {
     private var episodeWatchKeys: List<String> = emptyList()
     private var episodeIndex: Int = -1
     private var lastAutoNextAt: Long = 0L
+    private var restoringFromBlank = false
     private var chromeMajorVersion: Int = 128
     private var extensionScriptHandler: ScriptHandler? = null
     private var customView: View? = null
@@ -546,7 +547,7 @@ class PlayerWebActivity : ComponentActivity() {
             ): Boolean {
                 val url = request?.url?.toString() ?: return true
                 if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                    // intent://, market://, tg:// ... are almost always ad redirects.
+                    // intent://, market://, about:blank, data: ... are ad redirects.
                     return true
                 }
                 if (PlayerAdBlocker.isAdUrl(url, blockGamblingAds)) return true
@@ -567,6 +568,16 @@ class PlayerWebActivity : ComponentActivity() {
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
+                if (!useIframe && url == "about:blank" && startUrl.isNotBlank() &&
+                    !restoringFromBlank
+                ) {
+                    // Some providers open a blank ad page and write the ad
+                    // into it. Restore the actual player instead.
+                    restoringFromBlank = true
+                    view?.stopLoading()
+                    view?.loadUrl(startUrl)
+                    return
+                }
                 isLoading = true
                 loadProgress = 5
                 errorMessage = null

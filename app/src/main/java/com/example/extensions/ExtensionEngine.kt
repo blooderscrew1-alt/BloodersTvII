@@ -167,7 +167,9 @@ object ExtensionEngine {
                             if (text.length > 40) continue;
                             if ((text.indexOf('saltar anuncio') >= 0 ||
                                  text.indexOf('omitir anuncio') >= 0 ||
-                                 text.indexOf('skip ad') >= 0) && isVisible(nodes[i])) {
+                                 text.indexOf('skip ad') >= 0 ||
+                                 text.indexOf('saltar') >= 0 ||
+                                 text.indexOf('omitir') >= 0) && isVisible(nodes[i])) {
                                 return nodes[i];
                             }
                         }

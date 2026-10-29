@@ -39,8 +39,8 @@ android {
     applicationId = "com.aistudio.blooderstv.kjmnqx"
     minSdk = 24
     targetSdk = 36
-    versionCode = 77
-    versionName = "2.74"
+    versionCode = 78
+    versionName = "2.75"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -178,6 +178,7 @@ dependencies {
   debugImplementation(libs.androidx.compose.ui.test.manifest)
   debugImplementation(libs.androidx.compose.ui.tooling)
 }
+
 
 
 
