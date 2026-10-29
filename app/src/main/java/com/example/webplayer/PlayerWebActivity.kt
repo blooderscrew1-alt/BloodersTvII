@@ -3,6 +3,7 @@ package com.example.webplayer
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.app.PictureInPictureParams
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Bitmap
@@ -75,6 +76,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
@@ -89,6 +91,7 @@ import com.example.extensions.ExtensionNetworkFilter
 import com.example.extensions.WebExtension
 import com.example.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * The unified "Serchwebview" playback engine.
@@ -261,13 +264,34 @@ class PlayerWebActivity : ComponentActivity() {
             errorMessage = "No se recibiÃ³ un enlace de reproducciÃ³n."
             isLoading = false
         } else {
-            loadStartUrl()
-            // Never leave the app's loading overlay on top forever. If the
-            // provider's iframe is slow, show its page so the user can retry.
-            webView.postDelayed({
-                if (!isFinishing && isLoading) isLoading = false
-            }, 20_000)
+            if (legacyWebView && com.example.data.nativeplayer.NativeHlsResolver.supports(startUrl)) {
+                lifecycleScope.launch {
+                    val nativeUrl = com.example.data.nativeplayer.NativeHlsResolver.resolve(startUrl)
+                    if (nativeUrl != null && !isFinishing) {
+                        startActivity(
+                            Intent(this@PlayerWebActivity, com.example.player.NativeHlsActivity::class.java)
+                                .putExtra(com.example.player.NativeHlsActivity.EXTRA_URL, nativeUrl)
+                                .putExtra(com.example.player.NativeHlsActivity.EXTRA_TITLE, pageTitle)
+                        )
+                        finish()
+                    } else {
+                        loadStartUrl()
+                        scheduleLoadingFallback()
+                    }
+                }
+            } else {
+                loadStartUrl()
+                scheduleLoadingFallback()
+            }
         }
+    }
+
+    private fun scheduleLoadingFallback() {
+        // Never leave the app's loading overlay on top forever. If the
+        // provider's iframe is slow, show its page so the user can retry.
+        webView.postDelayed({
+            if (!isFinishing && isLoading) isLoading = false
+        }, 20_000)
     }
 
     /**
