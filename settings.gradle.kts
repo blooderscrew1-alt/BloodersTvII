@@ -8,7 +8,6 @@ pluginManagement {
       }
     }
     mavenCentral()
-    maven { url = uri("https://maven.mozilla.org/maven2/") }
     gradlePluginPortal()
   }
 }
@@ -20,11 +19,9 @@ dependencyResolutionManagement {
   repositories {
     google()
     mavenCentral()
-    maven { url = uri("https://maven.mozilla.org/maven2/") }
   }
 }
 
 rootProject.name = "BloodersTv II"
 
 include(":app")
-include(":geckoapp")
