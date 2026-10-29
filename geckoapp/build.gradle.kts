@@ -40,7 +40,11 @@ android {
     minSdk = 24
     targetSdk = 36
     versionCode = 1
-    versionName = "0.1-gecko"
+    versionName = "0.2-gecko"
+
+    ndk {
+      abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+    }
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -142,7 +146,7 @@ dependencies {
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.core.ktx)
   // WebView deliberately not included in the Gecko test build.
-  implementation("org.mozilla.geckoview:geckoview-armeabi-v7a:128.0.20240704121409")
+  implementation("org.mozilla.geckoview:geckoview-omni:128.0.20240704121409")
   // implementation(libs.androidx.datastore.preferences)
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
